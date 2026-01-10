@@ -31,6 +31,7 @@ import AskBookModal from '@/components/AskBookModal'
 import BuyPointsModal from '@/components/BuyPointsModal'
 import BackButton from '@/components/back-button'
 import ForumSection from '@/components/ForumSection'
+import BookChat from '@/components/BookChat'
 import { hasBooksToGiveAway } from '@/app/actions/points'
 
 const BOOK_CONDITIONS: { value: BookCondition; label: string }[] = [
@@ -646,6 +647,9 @@ export default function BookDetailPage() {
 
       {/* Community Discussions Forum */}
       <ForumSection bookId={book.id} />
+
+      {/* Book Chat Section */}
+      <BookChat bookId={book.id} />
     </div>
   )
 }
