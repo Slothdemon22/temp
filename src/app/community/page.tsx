@@ -66,12 +66,7 @@ export default function CommunityPage() {
   const [replyAnonymous, setReplyAnonymous] = useState(false)
   const [creatingReply, setCreatingReply] = useState(false)
 
-  // Load forum posts (general community - no bookId)
-  useEffect(() => {
-    loadPosts()
-  }, [])
-
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     setLoading(true)
     setError('')
 
@@ -89,7 +84,12 @@ export default function CommunityPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  // Load forum posts (general community - no bookId)
+  useEffect(() => {
+    loadPosts()
+  }, [loadPosts])
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault()

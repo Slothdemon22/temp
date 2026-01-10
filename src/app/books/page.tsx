@@ -9,7 +9,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { getBooksAction } from '@/app/actions/books'
@@ -55,20 +55,33 @@ export default function BooksPage() {
   })
 
   const [wishlistStatus, setWishlistStatus] = useState<Record<string, boolean>>({})
+  const booksIdsRef = useRef<string>('')
 
-  // Load books
+  // Load books when filters change
   useEffect(() => {
     loadBooks()
-  }, [filters])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.search, filters.condition, filters.location])
 
-  // Load wishlist status for authenticated users
+  // Load wishlist status for authenticated users (only when book IDs actually change)
   useEffect(() => {
-    if (isAuthenticated && books.length > 0) {
+    if (!isAuthenticated || books.length === 0) {
+      return
+    }
+
+    // Create a string of book IDs to compare
+    const currentBookIds = books.map(b => b.id).sort().join(',')
+    
+    // Only load if the book IDs have actually changed
+    if (currentBookIds !== booksIdsRef.current) {
+      booksIdsRef.current = currentBookIds
       loadWishlistStatus()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, books])
 
   const loadBooks = async () => {
+    booksIdsRef.current = '' // Reset when loading new books
     setLoading(true)
     setError('')
 

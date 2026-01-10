@@ -11,7 +11,8 @@
  * 
  * Public routes (accessible without authentication):
  * - /books - Browse all books
- * - /book/[qrId] - View individual book by QR code
+ * - /book/[id] - View individual book by QR code
+ * - /book-history/[bookId] - View book history (accessible via QR code)
  * - /forums - Forum discussions (supports anonymous participation)
  * - /login - Login page
  * - /signup - Signup page
@@ -45,6 +46,7 @@ export default auth((req) => {
     '/',
     '/books',
     '/book',
+    '/book-history',
     '/forums',
     '/login',
     '/signup',

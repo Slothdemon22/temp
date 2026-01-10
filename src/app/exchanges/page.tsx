@@ -9,10 +9,11 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import BackButton from '@/components/back-button'
+import ReportIssueModal from '@/components/ReportIssueModal'
 import {
   getPendingExchangeRequestsAction,
   getUserExchangesAction,
@@ -55,14 +56,10 @@ export default function ExchangesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
+  const [reportModalOpen, setReportModalOpen] = useState(false)
+  const [selectedExchange, setSelectedExchange] = useState<Exchange | null>(null)
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadData()
-    }
-  }, [isAuthenticated])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     setError('')
 
@@ -73,18 +70,24 @@ export default function ExchangesPage() {
       ])
 
       if (pendingResult.success) {
-        setPendingRequests(pendingResult.exchanges || [])
+        setPendingRequests((pendingResult.exchanges || []) as Exchange[])
       }
 
       if (historyResult.success) {
-        setUserExchanges(historyResult.exchanges || [])
+        setUserExchanges((historyResult.exchanges || []) as Exchange[])
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load exchanges')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData()
+    }
+  }, [isAuthenticated, loadData])
 
   const handleApprove = async (exchangeId: string) => {
     if (!confirm('Approve this exchange? Points will be deducted from the requester and transferred to you.')) {
@@ -330,14 +333,27 @@ export default function ExchangesPage() {
                         {exchange.status}
                       </span>
                     </div>
-                    {exchange.status === 'REQUESTED' && isRequester && (
-                      <button
-                        onClick={() => handleCancel(exchange.id)}
-                        className="px-4 py-2 bg-linear-to-tl from-red-600 to-red-500 text-white rounded-full hover:opacity-90 transition-all font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
-                      >
-                        Cancel Request
-                      </button>
-                    )}
+                    <div className="flex gap-3">
+                      {exchange.status === 'REQUESTED' && isRequester && (
+                        <button
+                          onClick={() => handleCancel(exchange.id)}
+                          className="px-4 py-2 bg-linear-to-tl from-red-600 to-red-500 text-white rounded-full hover:opacity-90 transition-all font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
+                        >
+                          Cancel Request
+                        </button>
+                      )}
+                      {exchange.status === 'COMPLETED' && (
+                        <button
+                          onClick={() => {
+                            setSelectedExchange(exchange)
+                            setReportModalOpen(true)
+                          }}
+                          className="px-4 py-2 bg-linear-to-tl from-orange-600 to-orange-500 text-white rounded-full hover:opacity-90 transition-all font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
+                        >
+                          Report Issue
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )
               })
@@ -345,6 +361,22 @@ export default function ExchangesPage() {
           </div>
         )}
       </div>
+
+      {/* Report Issue Modal */}
+      {selectedExchange && (
+        <ReportIssueModal
+          exchangeId={selectedExchange.id}
+          bookTitle={selectedExchange.book.title}
+          isOpen={reportModalOpen}
+          onClose={() => {
+            setReportModalOpen(false)
+            setSelectedExchange(null)
+          }}
+          onSuccess={() => {
+            loadData() // Refresh exchanges after successful report
+          }}
+        />
+      )}
     </div>
   )
 }

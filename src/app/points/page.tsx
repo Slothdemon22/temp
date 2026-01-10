@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import BackButton from '@/components/back-button'
@@ -21,18 +21,7 @@ export default function PointsPage() {
   const [purchasing, setPurchasing] = useState<number | null>(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/login?callbackUrl=/points')
-      return
-    }
-
-    if (isAuthenticated) {
-      loadUserPoints()
-    }
-  }, [isAuthenticated, authLoading, router])
-
-  const loadUserPoints = async () => {
+  const loadUserPoints = useCallback(async () => {
     setLoading(true)
     try {
       const response = await fetch('/api/auth/me')
@@ -45,7 +34,18 @@ export default function PointsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login?callbackUrl=/points')
+      return
+    }
+
+    if (isAuthenticated) {
+      loadUserPoints()
+    }
+  }, [isAuthenticated, authLoading, router, loadUserPoints])
 
   const handleBuyPoints = async (points: number) => {
     setPurchasing(points)

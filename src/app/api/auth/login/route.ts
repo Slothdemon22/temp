@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { verifyPassword, setAuthCookie } from '@/lib/auth'
+import { signIn } from '@/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,43 +14,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Use NextAuth signIn
+    const result = await signIn('credentials', {
+      email,
+      password,
+      redirect: false,
     })
 
-    if (!user) {
+    if (!result || result.error) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       )
     }
-
-    // Verify password
-    const isValidPassword = await verifyPassword(password, user.password)
-
-    if (!isValidPassword) {
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      )
-    }
-
-    // Set auth cookie
-    await setAuthCookie({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-    })
 
     return NextResponse.json(
       {
         message: 'Login successful',
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        },
       },
       { status: 200 }
     )

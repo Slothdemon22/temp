@@ -40,6 +40,9 @@ model User {
   exchangesSent     Exchange[] @relation("ExchangeFromUser") // Exchanges where user is the owner
   exchangesReceived Exchange[] @relation("ExchangeToUser") // Exchanges where user is the requester
 
+  // Report relationships
+  reports Report[] // Reports created by this user
+
   // Forum relationships
   forumPosts ForumPost[] // Posts created by this user
   forumReplies ForumReply[] // Replies created by this user
@@ -149,6 +152,7 @@ model Book {
   wishlistItems  Wishlist[] // Users who have this book in their wishlist
   exchanges      Exchange[] // Exchanges involving this book
   historyEntries BookHistoryEntry[] // History entries for this book
+  reports        Report[] // Reports about this book
   forumPosts     ForumPost[] // Forum discussions about this book
 
   // Indexes for performance
@@ -240,6 +244,9 @@ model Exchange {
   updatedAt   DateTime  @updatedAt
   completedAt DateTime? // When exchange was completed
 
+  // Relationships
+  reports Report[] // Reports filed for this exchange
+
   // Indexes for performance and anti-abuse checks
   @@index([bookId]) // Fast lookup of exchanges for a book
   @@index([fromUserId]) // Fast lookup of exchanges sent by user
@@ -247,6 +254,83 @@ model Exchange {
   @@index([status]) // Fast filtering by status
   @@index([fromUserId, toUserId, createdAt]) // For detecting repeat exchanges
   @@map("exchanges")
+}
+
+// Report Reason Enum
+// Predefined reasons for reporting issues with exchanged books
+enum ReportReason {
+  CONDITION_MISMATCH // Book condition doesn't match listing
+  DAMAGED_BOOK // Book is damaged beyond expected condition
+  WRONG_BOOK // Wrong book received (different edition/title)
+  MISSING_PAGES // Pages are missing from the book
+  FAKE_LISTING // Listing was misleading or fake
+  OTHER // Other issues not covered above
+}
+
+// Report Status Enum
+// Tracks the lifecycle of a report
+enum ReportStatus {
+  OPEN // Report submitted, awaiting review
+  UNDER_REVIEW // Report is being reviewed by moderators
+  RESOLVED // Report resolved (issue addressed)
+  REJECTED // Report rejected (no issue found or invalid)
+}
+
+// Report Model - Issue Reporting System for Exchanged Books
+//
+// CRITICAL DESIGN PRINCIPLES:
+// 1. Reports are linked to COMPLETED exchanges only
+//    - Users can only report issues after receiving the book
+//    - Prevents premature or invalid reports
+//
+// 2. Reports trigger exchange status change to DISPUTED
+//    - Points are frozen (not auto-refunded)
+//    - Ownership remains unchanged until resolution
+//    - Prevents further actions on disputed exchanges
+//
+// 3. Anti-Abuse Safeguards:
+//    - Rate limiting: Max reports per user per time window
+//    - Duplicate prevention: Same exchange + reason cannot be reported twice
+//    - Description length validation
+//
+// 4. Access Control:
+//    - Only reporter and exchange participants can view reports
+//    - Reports cannot be modified after submission
+//    - Immutable audit trail for fairness
+//
+// 5. Fairness Preservation:
+//    - Points frozen (not reverted) to prevent abuse
+//    - Both parties can see the report
+//    - Admin resolution required (can be mocked for hackathon)
+model Report {
+  id String @id @default(uuid())
+
+  // Exchange and book being reported
+  exchangeId String // Exchange this report is about
+  exchange   Exchange @relation(fields: [exchangeId], references: [id], onDelete: Restrict)
+
+  bookId String // Book involved in the exchange
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Restrict)
+
+  // Reporter information
+  reporterId String // User who created the report
+  reporter   User   @relation(fields: [reporterId], references: [id], onDelete: Restrict)
+
+  // Report details
+  reason      ReportReason // Predefined reason for the report
+  description String?      @db.Text // Optional detailed description
+  status      ReportStatus @default(OPEN) // Current status of the report
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Indexes for performance and anti-abuse checks
+  @@index([exchangeId]) // Fast lookup of reports for an exchange
+  @@index([bookId]) // Fast lookup of reports for a book
+  @@index([reporterId]) // Fast lookup of user's reports
+  @@index([status]) // Fast filtering by status
+  @@unique([exchangeId, reporterId, reason]) // Prevent duplicate reports (same exchange + user + reason)
+  @@map("reports")
 }
 
 // Book History Entry Model - Immutable Book Journey

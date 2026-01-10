@@ -12,7 +12,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
@@ -25,7 +25,7 @@ interface BookHistoryEntry {
   readingDuration: string | null
   notes: string | null
   displayName: string | null
-  createdAt: Date
+  createdAt: Date | string // Can be Date object or serialized string from server action
 }
 
 interface Book {
@@ -62,11 +62,13 @@ export default function BookHistoryPage() {
 
   const isOwner = book && user && book.currentOwner.id === user.id
 
-  useEffect(() => {
-    loadBook()
-  }, [bookId])
+  const loadBook = useCallback(async () => {
+    if (!bookId) {
+      setError('Invalid book ID')
+      setLoading(false)
+      return
+    }
 
-  const loadBook = async () => {
     setLoading(true)
     setError('')
 
@@ -75,16 +77,36 @@ export default function BookHistoryPage() {
 
       if (!result.success) {
         setError(result.error || 'Book not found')
+        setLoading(false)
         return
       }
 
-      setBook(result.book)
+      if (!result.book) {
+        setError('Book not found')
+        setLoading(false)
+        return
+      }
+
+      // Ensure historyEntries is an array
+      const bookData = {
+        ...result.book,
+        historyEntries: result.book.historyEntries || [],
+      }
+
+      setBook(bookData)
     } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      console.error('Error loading book history:', err)
+      setError(err.message || 'An error occurred while loading book history')
     } finally {
       setLoading(false)
     }
-  }
+  }, [bookId])
+
+  useEffect(() => {
+    if (bookId) {
+      loadBook()
+    }
+  }, [bookId, loadBook])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -139,12 +161,35 @@ export default function BookHistoryPage() {
     )
   }
 
-  if (!book) return null
+  if (!book) {
+    if (error) {
+      return (
+        <div className="min-h-screen bg-white pt-28 flex items-center justify-center px-4 md:px-16 lg:px-24 xl:px-32">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <Link
+              href="/books"
+              className="text-orange-500 hover:text-orange-600 transition-colors"
+            >
+              Back to Books
+            </Link>
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-white pt-28 pb-16 px-4 md:px-16 lg:px-24 xl:px-32">
       <div className="max-w-4xl mx-auto">
         <BackButton href={`/book/${bookId}`} label="Back to Book Details" />
+        
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
         {/* Header */}
         <div className="bg-white/50 backdrop-blur border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] p-6 md:p-8 mb-8">
           <div className="flex flex-col md:flex-row gap-8">
@@ -319,7 +364,7 @@ export default function BookHistoryPage() {
                           </p>
                         </div>
                         <p className="text-xs text-zinc-400">
-                          {new Date(entry.createdAt).toLocaleDateString('en-US', {
+                          {new Date(entry.createdAt as string).toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',

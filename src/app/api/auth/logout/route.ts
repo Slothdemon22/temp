@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { removeAuthCookie } from '@/lib/auth'
+import { signOut } from '@/auth'
 
 export async function POST() {
-  await removeAuthCookie()
+  await signOut({ redirect: false })
   return NextResponse.json({ message: 'Logged out successfully' })
 }
 

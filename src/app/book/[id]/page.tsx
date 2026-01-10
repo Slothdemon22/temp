@@ -11,7 +11,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
@@ -91,21 +91,13 @@ export default function BookDetailPage() {
   const [loadingGuide, setLoadingGuide] = useState(false)
 
   const isOwner = book && user && book.currentOwner.id === user.id
+  const bookIdRef = useRef<string | null>(null)
+  const bookLoadedRef = useRef(false)
 
-  // Load AI-computed points for the book
-  useEffect(() => {
-    if (book) {
-      loadBookPoints()
-      loadReadingGuide()
-    }
-  }, [book])
-
-  const loadBookPoints = async () => {
-    if (!book) return
-    
+  const loadBookPoints = useCallback(async (bookId: string) => {
     setLoadingPoints(true)
     try {
-      const result = await getBookPointsAction(book.id)
+      const result = await getBookPointsAction(bookId)
       if (result.success && result.points !== undefined) {
         setBookPoints(result.points)
       }
@@ -114,14 +106,12 @@ export default function BookDetailPage() {
     } finally {
       setLoadingPoints(false)
     }
-  }
+  }, [])
 
-  const loadReadingGuide = async () => {
-    if (!book) return
-    
+  const loadReadingGuide = useCallback(async (bookId: string) => {
     setLoadingGuide(true)
     try {
-      const result = await getReadingGuideAction(book.id)
+      const result = await getReadingGuideAction(bookId)
       if (result.success && result.guide) {
         setReadingGuide(result.guide)
       }
@@ -130,23 +120,20 @@ export default function BookDetailPage() {
     } finally {
       setLoadingGuide(false)
     }
-  }
+  }, [])
+
+  // Load AI-computed points for the book (only when book ID changes)
+  useEffect(() => {
+    if (book && book.id !== bookIdRef.current) {
+      bookIdRef.current = book.id
+      loadBookPoints(book.id)
+      loadReadingGuide(book.id)
+    }
+  }, [book?.id, loadBookPoints, loadReadingGuide])
 
   const requiredPoints = bookPoints || 10 // Fallback to 10 if not yet calculated
 
-  useEffect(() => {
-    loadBook()
-  }, [bookId])
-
-  useEffect(() => {
-    if (isAuthenticated && book) {
-      checkWishlistStatus()
-      loadUserPoints()
-      checkUserBooks()
-    }
-  }, [isAuthenticated, book])
-
-  const checkUserBooks = async () => {
+  const checkUserBooks = useCallback(async () => {
     if (!user) return
     setLoadingBooks(true)
     try {
@@ -157,9 +144,9 @@ export default function BookDetailPage() {
     } finally {
       setLoadingBooks(false)
     }
-  }
+  }, [user?.id])
 
-  const loadUserPoints = async () => {
+  const loadUserPoints = useCallback(async () => {
     if (!user) return
     // Get user points from session or API
     try {
@@ -171,9 +158,20 @@ export default function BookDetailPage() {
     } catch {
       // Ignore errors
     }
-  }
+  }, [user?.id])
 
-  const loadBook = async () => {
+  const checkWishlistStatus = useCallback(async () => {
+    if (!isAuthenticated || !book) return
+
+    try {
+      const result = await isInWishlistAction(book.id)
+      setInWishlist(result.success ? result.inWishlist : false)
+    } catch {
+      setInWishlist(false)
+    }
+  }, [isAuthenticated, book?.id])
+
+  const loadBook = useCallback(async () => {
     setLoading(true)
     setError('')
 
@@ -185,24 +183,28 @@ export default function BookDetailPage() {
         return
       }
 
-      setBook(result.book)
+      setBook(result.book as any)
+      bookLoadedRef.current = true
     } catch (err: any) {
       setError(err.message || 'An error occurred')
     } finally {
       setLoading(false)
     }
-  }
+  }, [bookId])
 
-  const checkWishlistStatus = async () => {
-    if (!isAuthenticated || !book) return
-
-    try {
-      const result = await isInWishlistAction(book.id)
-      setInWishlist(result.success ? result.inWishlist : false)
-    } catch {
-      setInWishlist(false)
+  useEffect(() => {
+    if (bookId) {
+      loadBook()
     }
-  }
+  }, [bookId, loadBook])
+
+  useEffect(() => {
+    if (isAuthenticated && book && bookLoadedRef.current) {
+      checkWishlistStatus()
+      loadUserPoints()
+      checkUserBooks()
+    }
+  }, [isAuthenticated, book?.id, checkWishlistStatus, loadUserPoints, checkUserBooks])
 
   const handleWishlistToggle = async () => {
     if (!isAuthenticated) {

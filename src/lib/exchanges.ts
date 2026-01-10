@@ -338,7 +338,7 @@ export async function approveExchange(exchangeId: string) {
   // - Exchange status is updated atomically
   // If any step fails, everything rolls back
   try {
-    const result = await prisma.$transaction(async (tx: typeof prisma) => {
+    const result = await prisma.$transaction(async (tx) => {
     // 1. Deduct points from requester
     await tx.user.update({
       where: { id: exchange.toUserId },

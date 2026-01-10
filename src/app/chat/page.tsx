@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
@@ -26,13 +26,7 @@ export default function ChatPage() {
     }
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user) {
-      fetchRooms()
-    }
-  }, [user])
-
-  const fetchRooms = async () => {
+  const fetchRooms = useCallback(async () => {
     try {
       const response = await fetch('/api/chat/rooms')
       const data = await response.json()
@@ -44,7 +38,13 @@ export default function ChatPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (user) {
+      fetchRooms()
+    }
+  }, [user, fetchRooms])
 
   const handleChatClick = (room: Room) => {
     setSelectedRoom(room)
