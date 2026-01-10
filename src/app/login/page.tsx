@@ -1,18 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from 'next-auth/react'
 import Image from 'next/image'
 
 /**
- * Login Page for Readloom
+ * Login Form Component
  * 
- * Uses NextAuth's signIn function for authentication.
- * Supports redirect to callbackUrl after successful login.
+ * Extracted to allow useSearchParams() to be wrapped in Suspense
  */
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/'
@@ -129,6 +128,35 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * Login Page for Readloom
+ * 
+ * Uses NextAuth's signIn function for authentication.
+ * Supports redirect to callbackUrl after successful login.
+ */
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[url('/assets/hero-gradient-bg.png')] bg-cover bg-center bg-no-repeat px-4 md:px-16 lg:px-24 xl:px-32 py-8 md:py-12">
+        <div className="w-full max-w-md my-auto">
+          <div className="bg-white/50 backdrop-blur border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] p-8 md:p-10">
+            <div className="mb-6 text-center">
+              <Link href="/" className="inline-block mb-4">
+                <Image src="/assets/readloom.svg" alt="Readloom Logo" width={150} height={40} />
+              </Link>
+              <h1 className="text-3xl md:text-4xl font-urbanist font-bold text-zinc-900 mb-2">
+                Loading...
+              </h1>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }
 

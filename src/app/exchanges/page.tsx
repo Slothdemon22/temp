@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import BackButton from '@/components/back-button'
 import ReportIssueModal from '@/components/ReportIssueModal'
@@ -51,6 +52,7 @@ interface Exchange {
 
 export default function ExchangesPage() {
   const { user, isAuthenticated } = useAuth()
+  const router = useRouter()
   const [pendingRequests, setPendingRequests] = useState<Exchange[]>([])
   const [userExchanges, setUserExchanges] = useState<Exchange[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,6 +60,7 @@ export default function ExchangesPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [selectedExchange, setSelectedExchange] = useState<Exchange | null>(null)
+  const [startingVideoCall, setStartingVideoCall] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -150,6 +153,35 @@ export default function ExchangesPage() {
     }
   }
 
+  const handleStartVideoCall = async (exchangeId: string) => {
+    setStartingVideoCall(exchangeId)
+    setError('')
+
+    try {
+      const response = await fetch('/api/exchange-video-room', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ exchangeId }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Failed to start video call')
+        setStartingVideoCall(null)
+        return
+      }
+
+      // Navigate to exchange verification page
+      router.push(`/exchange-verification/${exchangeId}`)
+    } catch (err: any) {
+      setError('Failed to start video call')
+      setStartingVideoCall(null)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'REQUESTED':
@@ -194,7 +226,7 @@ export default function ExchangesPage() {
             Exchanges
           </h1>
           <p className="text-zinc-500">
-            Manage your book exchanges
+            Manage your book exchanges • Use Live Verification Call for APPROVED or COMPLETED exchanges
           </p>
         </div>
 
@@ -270,19 +302,33 @@ export default function ExchangesPage() {
                       {exchange.status}
                     </span>
                   </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleApprove(exchange.id)}
-                      className="px-4 py-2 bg-linear-to-tl from-green-600 to-green-500 text-white rounded-full hover:opacity-90 transition-all font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReject(exchange.id)}
-                      className="px-4 py-2 bg-linear-to-tl from-red-600 to-red-500 text-white rounded-full hover:opacity-90 transition-all font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
-                    >
-                      Reject
-                    </button>
+                  <div className="flex gap-3 flex-wrap">
+                    {/* Show video call button for APPROVED and COMPLETED exchanges */}
+                    {(exchange.status === 'APPROVED' || exchange.status === 'COMPLETED') && (
+                      <button
+                        onClick={() => handleStartVideoCall(exchange.id)}
+                        disabled={startingVideoCall === exchange.id}
+                        className="px-5 py-2.5 bg-linear-to-tl from-blue-600 to-blue-500 text-white rounded-full hover:opacity-90 transition-all font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)] disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
+                      >
+                        {startingVideoCall === exchange.id ? 'Starting...' : '📹 Start Live Verification Call'}
+                      </button>
+                    )}
+                    {exchange.status === 'REQUESTED' && (
+                      <>
+                        <button
+                          onClick={() => handleApprove(exchange.id)}
+                          className="px-4 py-2 bg-linear-to-tl from-green-600 to-green-500 text-white rounded-full hover:opacity-90 transition-all font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReject(exchange.id)}
+                          className="px-4 py-2 bg-linear-to-tl from-red-600 to-red-500 text-white rounded-full hover:opacity-90 transition-all font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))
@@ -300,6 +346,7 @@ export default function ExchangesPage() {
               userExchanges.map((exchange) => {
                 const isRequester = exchange.toUserId === user?.id
                 const isOwner = exchange.fromUserId === user?.id
+                const canStartVideoCall = exchange.status === 'APPROVED' || exchange.status === 'COMPLETED'
 
                 return (
                   <div
@@ -333,7 +380,17 @@ export default function ExchangesPage() {
                         {exchange.status}
                       </span>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap items-center">
+                      {/* Video call button for APPROVED and COMPLETED exchanges - visible to both requester and owner */}
+                      {canStartVideoCall && (
+                        <button
+                          onClick={() => handleStartVideoCall(exchange.id)}
+                          disabled={startingVideoCall === exchange.id}
+                          className="px-5 py-2.5 bg-linear-to-tl from-blue-600 to-blue-500 text-white rounded-full hover:opacity-90 transition-all font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)] disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base flex-shrink-0"
+                        >
+                          {startingVideoCall === exchange.id ? 'Starting...' : '📹 Start Live Verification Call'}
+                        </button>
+                      )}
                       {exchange.status === 'REQUESTED' && isRequester && (
                         <button
                           onClick={() => handleCancel(exchange.id)}

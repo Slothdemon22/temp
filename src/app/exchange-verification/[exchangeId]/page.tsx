@@ -1,10 +1,9 @@
 "use client";
-import { useEffect, useState, useRef, useCallback, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import type { HMSPrebuiltRefType } from "@100mslive/roomkit-react";
-import RoomLanding from "./components/RoomLanding";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary from "@/app/meeting/components/ErrorBoundary";
 
 const HMSPrebuilt = dynamic(
   async () => {
@@ -12,7 +11,6 @@ const HMSPrebuilt = dynamic(
       return (await import("@100mslive/roomkit-react")).HMSPrebuilt;
     } catch (error) {
       console.error("Failed to load HMSPrebuilt:", error);
-      // Retry loading the chunk
       if (error instanceof Error && error.message.includes("ChunkLoadError")) {
         window.location.reload();
       }
@@ -20,7 +18,7 @@ const HMSPrebuilt = dynamic(
     }
   },
   { 
-    ssr: false, // ✅ stops SSR issues
+    ssr: false,
     loading: () => (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -32,16 +30,18 @@ const HMSPrebuilt = dynamic(
   }
 );
 
-function MeetingPageContent() {
+function ExchangeVerificationContent() {
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [isJoined, setIsJoined] = useState(false);
   const [chunkError, setChunkError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [bookTitle, setBookTitle] = useState<string>("the book");
   const hmsRef = useRef<HMSPrebuiltRefType>(null);
-  const searchParams = useSearchParams();
+  const params = useParams();
   const router = useRouter();
+  const exchangeId = params?.exchangeId as string;
 
   // Prevent hydration errors by only rendering client-side
   useEffect(() => {
@@ -64,117 +64,34 @@ function MeetingPageContent() {
     return () => window.removeEventListener("error", handleChunkError);
   }, []);
 
-  const joinRoom = useCallback(async (roomId?: string, shouldCreate: boolean = false) => {
+  // Fetch exchange video room
+  useEffect(() => {
+    if (!exchangeId || !isMounted || roomCode || isLoading) return;
+
     setIsLoading(true);
     setError(null);
-    
-    try {
-      const urlRoomId = roomId || searchParams.get("room");
-      let targetRoomId: string;
 
-      if (urlRoomId) {
-        // Check if room exists first
-        console.log("Checking if room exists:", urlRoomId);
-        const checkRes = await fetch("/api/check-room", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ room_id: urlRoomId }),
-        });
-
-        if (!checkRes.ok) {
-          const errorData = await checkRes.json().catch(() => ({}));
-          throw new Error(
-            `Failed to check room: ${checkRes.statusText}. ${JSON.stringify(errorData)}`
-          );
+    fetch("/api/exchange-video-room", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ exchangeId }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Failed to get video room");
         }
 
-        const checkData = await checkRes.json();
-        
-        if (!checkData.exists) {
-          throw new Error("Room does not exist. Please create a new room or use a valid room ID.");
-        }
-
-        console.log("Room exists, joining:", urlRoomId);
-        targetRoomId = urlRoomId;
-      } else if (shouldCreate) {
-        // Only create room if user explicitly requested it
-        console.log("Creating new room...");
-        const roomRes = await fetch("/api/get-or-create-room", { method: "POST" });
-        if (!roomRes.ok) {
-          const errorData = await roomRes.json().catch(() => ({}));
-          throw new Error(
-            `Failed to create room: ${roomRes.statusText}. ${JSON.stringify(errorData)}`
-          );
-        }
-
-        const roomData = await roomRes.json();
-        if (!roomData.id) {
-          throw new Error("Room creation failed: No room ID returned");
-        }
-
-        targetRoomId = roomData.id;
-        // Update URL with new room ID
-        router.push(`/meeting?room=${targetRoomId}`);
-      } else {
-        // No room ID and not creating - show landing page
+        setBookTitle(data.bookTitle || "the book");
+        setRoomCode(data.roomCode);
         setIsLoading(false);
-        return;
-      }
-
-      // Generate room code - everyone joins as host role
-      const role = "host"; // Always use host role for all users
-      console.log(`🔑 Joining room ${targetRoomId} as role: ${role}`);
-      
-      // Add delay to avoid hitting API too frequently
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const codeRes = await fetch("/api/generate-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ room_id: targetRoomId, role: "host" }), // Explicitly use "host"
+      })
+      .catch((err) => {
+        console.error("Error fetching exchange video room:", err);
+        setError(err instanceof Error ? err.message : "Failed to start video call");
+        setIsLoading(false);
       });
-
-      if (!codeRes.ok) {
-        const errorData = await codeRes.json().catch(() => ({}));
-        throw new Error(
-          `Failed to generate code: ${codeRes.statusText}. ${JSON.stringify(errorData)}`
-        );
-      }
-
-      const codeData = await codeRes.json();
-      let code: string | null = null;
-      
-      if (codeData.data?.[0]?.code) {
-        code = codeData.data[0].code;
-      } else if (codeData.code) {
-        code = codeData.code;
-      } else if (typeof codeData === "string") {
-        code = codeData;
-      }
-
-      if (!code) {
-        throw new Error("Code generation failed: No code returned in response");
-      }
-
-      setRoomCode(code);
-      setIsLoading(false);
-    } catch (err) {
-      console.error("Error joining room:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-      setIsLoading(false);
-    }
-  }, [searchParams, router]);
-
-  // Auto-join if room ID is in URL (only if room exists)
-  useEffect(() => {
-    const urlRoomId = searchParams.get("room");
-    
-    if (urlRoomId && !roomCode && !isLoading && isMounted) {
-      // Don't create room automatically, just try to join existing one
-      joinRoom(urlRoomId, false);
-    }
-  }, [searchParams, roomCode, isLoading, isMounted, joinRoom]);
-
+  }, [exchangeId, isMounted, roomCode, isLoading]);
 
   // Auto-enable video and audio tracks after joining
   useEffect(() => {
@@ -200,7 +117,7 @@ function MeetingPageContent() {
             timeoutId = setTimeout(enableTracks, 500);
           } else if (!hasLoggedWarning) {
             hasLoggedWarning = true;
-            console.warn("Max retries reached - tracks may not be available yet. This is normal if camera/mic permissions are pending.");
+            console.warn("Max retries reached - tracks may not be available yet.");
           }
           return;
         }
@@ -218,7 +135,7 @@ function MeetingPageContent() {
             timeoutId = setTimeout(enableTracks, 500);
           } else if (!hasLoggedWarning) {
             hasLoggedWarning = true;
-            console.warn("Max retries reached - tracks may not be available yet. This is normal if camera/mic permissions are pending.");
+            console.warn("Max retries reached - tracks may not be available yet.");
           }
           return;
         }
@@ -281,18 +198,6 @@ function MeetingPageContent() {
     };
   }, [isJoined]);
 
-  const handleCreateRoom = () => {
-    // Explicitly create a new room
-    joinRoom(undefined, true);
-  };
-
-  const handleJoinRoom = (roomId: string) => {
-    // Join existing room (don't create)
-    router.push(`/meeting?room=${roomId}`);
-    joinRoom(roomId, false);
-  };
-
-
   // Prevent hydration errors - only render after mount
   if (!isMounted) {
     return (
@@ -302,20 +207,6 @@ function MeetingPageContent() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
         </div>
       </div>
-    );
-  }
-
-  // Show landing page if no room code and not loading from URL
-  if (!roomCode && !searchParams.get("room")) {
-    return (
-      <>
-        <RoomLanding onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} />
-        {error && (
-          <div className="fixed bottom-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50" suppressHydrationWarning>
-            {error}
-          </div>
-        )}
-      </>
     );
   }
 
@@ -330,11 +221,28 @@ function MeetingPageContent() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="text-lg font-semibold text-red-600">Error</div>
+          <p className="text-gray-600">{error}</p>
+          <button
+            onClick={() => router.push("/exchanges")}
+            className="px-4 py-2 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition-colors"
+          >
+            Back to Exchanges
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!roomCode && isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50" suppressHydrationWarning>
         <div className="text-center space-y-4">
-          <div className="text-lg font-semibold text-gray-700">Joining meeting...</div>
+          <div className="text-lg font-semibold text-gray-700">Starting verification call...</div>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
         </div>
       </div>
@@ -345,61 +253,79 @@ function MeetingPageContent() {
 
   return (
     <>
-      <div style={{ height: "100vh", position: "relative" }}>
+      {/* Exchange Verification Banner */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-blue-600 text-white px-4 py-3 shadow-lg">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📚</span>
+            <p className="text-sm font-medium">
+              This call is for book condition verification on <strong>{bookTitle}</strong>
+            </p>
+          </div>
+          <button
+            onClick={() => router.push("/exchanges")}
+            className="text-sm underline hover:no-underline"
+          >
+            Back to Exchanges
+          </button>
+        </div>
+      </div>
+      
+      <div style={{ height: "100vh", position: "relative", marginTop: "48px" }}>
         {/* HMSPrebuilt Component */}
         <ErrorBoundary>
           <HMSPrebuilt
             ref={hmsRef}
             roomCode={roomCode}
-          onJoin={async () => {
-            console.log("✅ Successfully joined the room!");
-            setIsJoined(true);
-            setIsLoading(false);
-            
-            setTimeout(async () => {
-              const ref = hmsRef.current;
-              if (ref?.hmsActions && ref?.hmsStore) {
-                try {
-                  const { hmsActions, hmsStore } = ref;
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const storeState = hmsStore.getState((state: any) => state);
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const localPeer = storeState?.hmsStates?.localPeer || storeState?.localPeer;
-                  
-                  if (localPeer) {
-                    const videoTrack = localPeer.videoTrack;
-                    const audioTrack = localPeer.audioTrack;
+            onJoin={async () => {
+              console.log("✅ Successfully joined the verification room!");
+              setIsJoined(true);
+              setIsLoading(false);
+              
+              setTimeout(async () => {
+                const ref = hmsRef.current;
+                if (ref?.hmsActions && ref?.hmsStore) {
+                  try {
+                    const { hmsActions, hmsStore } = ref;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const storeState = hmsStore.getState((state: any) => state);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const localPeer = storeState?.hmsStates?.localPeer || storeState?.localPeer;
                     
-                    if (videoTrack?.id) {
-                      try {
-                        await hmsActions.setEnabledTrack(videoTrack.id, true);
-                        console.log("✅ Video enabled on join");
-                      } catch (e) {
-                        console.warn("Video enable on join failed:", e);
+                    if (localPeer) {
+                      const videoTrack = localPeer.videoTrack;
+                      const audioTrack = localPeer.audioTrack;
+                      
+                      if (videoTrack?.id) {
+                        try {
+                          await hmsActions.setEnabledTrack(videoTrack.id, true);
+                          console.log("✅ Video enabled on join");
+                        } catch (e) {
+                          console.warn("Video enable on join failed:", e);
+                        }
+                      }
+                      
+                      if (audioTrack?.id) {
+                        try {
+                          await hmsActions.setEnabledTrack(audioTrack.id, true);
+                          console.log("✅ Audio enabled on join");
+                        } catch (e) {
+                          console.warn("Audio enable on join failed:", e);
+                        }
                       }
                     }
-                    
-                    if (audioTrack?.id) {
-                      try {
-                        await hmsActions.setEnabledTrack(audioTrack.id, true);
-                        console.log("✅ Audio enabled on join");
-                      } catch (e) {
-                        console.warn("Audio enable on join failed:", e);
-                      }
-                    }
+                  } catch (error) {
+                    console.warn("Failed to enable tracks on join:", error);
                   }
-                } catch (error) {
-                  console.warn("Failed to enable tracks on join:", error);
                 }
-              }
-            }, 2000);
-          }}
-          onLeave={() => {
-            console.log("Left the room");
-            setIsJoined(false);
-            setRoomCode(null);
-            router.push("/");
-          }}
+              }, 2000);
+            }}
+            onLeave={() => {
+              console.log("Left the verification room");
+              setIsJoined(false);
+              setRoomCode(null);
+              router.push("/exchanges");
+            }}
           />
         </ErrorBoundary>
       </div>
@@ -407,7 +333,7 @@ function MeetingPageContent() {
   );
 }
 
-export default function MeetingPage() {
+export default function ExchangeVerificationPage() {
   return (
     <Suspense
       fallback={
@@ -419,7 +345,7 @@ export default function MeetingPage() {
         </div>
       }
     >
-      <MeetingPageContent />
+      <ExchangeVerificationContent />
     </Suspense>
   );
 }

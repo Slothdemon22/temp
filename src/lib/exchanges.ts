@@ -660,6 +660,12 @@ export async function getPendingExchangeRequests() {
           condition: true,
         },
       },
+      fromUser: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       toUser: {
         select: {
           id: true,

@@ -40,6 +40,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth-helpers'
+import { requireAdmin } from '@/lib/admin-helpers'
 
 // Rate limiting constants
 const MAX_REPORTS_PER_DAY = 3
@@ -505,6 +506,255 @@ export async function canUserReportExchange(exchangeId: string) {
     return { canReport: true }
   } catch (error: any) {
     return { canReport: false, reason: error.message || 'Unable to check report eligibility' }
+  }
+}
+
+/**
+ * ============================================
+ * ADMIN FUNCTIONS - Report Resolution
+ * ============================================
+ * 
+ * These functions are only accessible to admins.
+ * They allow admins to:
+ * - View all reports
+ * - Resolve reports (mark as RESOLVED)
+ * - Reject reports (mark as REJECTED)
+ * - Handle exchange status when resolving reports
+ */
+
+/**
+ * Get all reports (Admin only)
+ * 
+ * Returns all reports in the system for admin review.
+ * 
+ * @returns List of all reports with full details
+ */
+export async function getAllReports() {
+  await requireAdmin()
+
+  const reports = await prisma.report.findMany({
+    include: {
+      exchange: {
+        include: {
+          fromUser: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          toUser: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      },
+      book: {
+        select: {
+          id: true,
+          title: true,
+          author: true,
+          condition: true,
+        },
+      },
+      reporter: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  })
+
+  return reports
+}
+
+/**
+ * Resolve a report (Admin only)
+ * 
+ * When a report is resolved:
+ * - Report status → RESOLVED
+ * - Exchange remains DISPUTED (admin has handled the issue)
+ * - Points remain frozen (admin may have manually refunded/adjusted)
+ * 
+ * This indicates the admin has reviewed and resolved the issue.
+ * 
+ * @param reportId - Report UUID
+ * @param adminNotes - Optional notes from admin (for future implementation)
+ * @returns Updated report
+ */
+export async function resolveReport(
+  reportId: string,
+  adminNotes?: string
+) {
+  await requireAdmin()
+
+  const report = await prisma.report.findUnique({
+    where: { id: reportId },
+    include: {
+      exchange: true,
+    },
+  })
+
+  if (!report) {
+    throw new Error('Report not found')
+  }
+
+  // Update report status to RESOLVED
+  // Exchange remains DISPUTED - admin has handled the issue
+  const updatedReport = await prisma.report.update({
+    where: { id: reportId },
+    data: {
+      status: 'RESOLVED',
+      // Note: adminNotes could be added as a field in the future
+    },
+    include: {
+      exchange: {
+        include: {
+          fromUser: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          toUser: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      book: {
+        select: {
+          id: true,
+          title: true,
+          author: true,
+        },
+      },
+      reporter: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  })
+
+  return updatedReport
+}
+
+/**
+ * Reject a report (Admin only)
+ * 
+ * When a report is rejected:
+ * - Report status → REJECTED
+ * - Exchange status → COMPLETED (report was invalid, no issue found)
+ * - Points remain as they were (no refund needed)
+ * 
+ * This indicates the admin found no valid issue with the exchange.
+ * 
+ * @param reportId - Report UUID
+ * @param adminNotes - Optional notes from admin (for future implementation)
+ * @returns Updated report
+ */
+export async function rejectReport(
+  reportId: string,
+  adminNotes?: string
+) {
+  await requireAdmin()
+
+  const report = await prisma.report.findUnique({
+    where: { id: reportId },
+    include: {
+      exchange: true,
+    },
+  })
+
+  if (!report) {
+    throw new Error('Report not found')
+  }
+
+  // ATOMIC OPERATION: Reject report and restore exchange status
+  // This ensures consistency: if report is invalid, exchange is valid
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Update report status to REJECTED
+      const updatedReport = await tx.report.update({
+        where: { id: reportId },
+        data: {
+          status: 'REJECTED',
+        },
+        include: {
+          exchange: {
+            include: {
+              fromUser: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              toUser: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          book: {
+            select: {
+              id: true,
+              title: true,
+              author: true,
+            },
+          },
+          reporter: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      })
+
+      // 2. Check if there are other OPEN reports for this exchange
+      // If all reports are resolved/rejected, we can restore exchange status
+      const otherOpenReports = await tx.report.count({
+        where: {
+          exchangeId: report.exchangeId,
+          status: 'OPEN',
+          id: {
+            not: reportId,
+          },
+        },
+      })
+
+      // 3. If no other OPEN reports, restore exchange to COMPLETED
+      // This means the exchange was valid and all reports are handled
+      if (otherOpenReports === 0) {
+        await tx.exchange.update({
+          where: { id: report.exchangeId },
+          data: {
+            status: 'COMPLETED',
+          },
+        })
+      }
+
+      return updatedReport
+    })
+
+    return result
+  } catch (error: any) {
+    console.error('Error rejecting report:', error)
+    throw new Error('Failed to reject report. Please try again.')
   }
 }
 

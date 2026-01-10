@@ -14,6 +14,9 @@ import {
   getReportsByExchange as getReportsByExchangeLib,
   getUserReports as getUserReportsLib,
   canUserReportExchange as canUserReportExchangeLib,
+  getAllReports as getAllReportsLib,
+  resolveReport as resolveReportLib,
+  rejectReport as rejectReportLib,
   type ReportReason,
 } from '@/lib/reports'
 
@@ -90,6 +93,67 @@ export async function canUserReportExchangeAction(exchangeId: string) {
       success: false,
       canReport: false,
       reason: error.message || 'Unable to check report eligibility',
+    }
+  }
+}
+
+/**
+ * ============================================
+ * ADMIN SERVER ACTIONS
+ * ============================================
+ */
+
+/**
+ * Server Action: Get all reports (Admin only)
+ */
+export async function getAllReportsAction() {
+  try {
+    const reports = await getAllReportsLib()
+    return { success: true, reports }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to fetch reports',
+    }
+  }
+}
+
+/**
+ * Server Action: Resolve a report (Admin only)
+ */
+export async function resolveReportAction(
+  reportId: string,
+  adminNotes?: string
+) {
+  try {
+    const report = await resolveReportLib(reportId, adminNotes)
+    revalidatePath('/admin/reports')
+    revalidatePath('/exchanges')
+    return { success: true, report }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to resolve report',
+    }
+  }
+}
+
+/**
+ * Server Action: Reject a report (Admin only)
+ */
+export async function rejectReportAction(
+  reportId: string,
+  adminNotes?: string
+) {
+  try {
+    const report = await rejectReportLib(reportId, adminNotes)
+    revalidatePath('/admin/reports')
+    revalidatePath('/exchanges')
+    return { success: true, report }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to reject report',
     }
   }
 }

@@ -31,12 +31,14 @@ declare module 'next-auth' {
       email: string
       name?: string | null
       points: number
+      isAdmin?: boolean
     }
   }
 
   interface User {
     id: string
     points: number
+    isAdmin?: boolean
   }
 }
 
@@ -113,6 +115,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             email: user.email,
             name: user.name,
             points: user.points,
+            isAdmin: user.isAdmin,
           }
         } catch (error) {
           console.error('Authorization error:', error)
@@ -142,27 +145,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
    * These callbacks ensure user.id and user.points are available in the session
    */
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       // When user first signs in, user object is available
       if (user) {
         token.id = user.id
         token.points = user.points
+        token.isAdmin = user.isAdmin
+        return token
       }
       
-      // On subsequent requests, fetch fresh user data from database
-      // This ensures points are always up-to-date
-      if (token.id) {
+      // Only fetch fresh user data when explicitly triggered via session update
+      // This prevents infinite loops and edge runtime errors
+      // The token already has the data from sign-in, so we don't need to fetch on every request
+      if (token.id && trigger === 'update') {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { points: true },
+            select: { points: true, isAdmin: true },
           })
           
           if (dbUser) {
             token.points = dbUser.points
+            token.isAdmin = dbUser.isAdmin
           }
         } catch (error) {
-          console.error('Error fetching user points:', error)
+          // Silently fail - use existing token data
+          // Don't log errors as it creates noise and infinite loops
         }
       }
       
@@ -170,10 +178,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     
     async session({ session, token }) {
-      // Extend session with user.id and user.points
+      // Extend session with user.id, user.points, and user.isAdmin
       if (token.id && session.user) {
         session.user.id = token.id as string
         session.user.points = token.points as number
+        session.user.isAdmin = token.isAdmin as boolean
       }
       
       return session

@@ -38,6 +38,7 @@ export default auth((req) => {
     '/exchange',
     '/profile',
     '/points',
+    '/reports',
   ]
 
   // Define public routes that should be accessible without auth

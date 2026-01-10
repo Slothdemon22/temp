@@ -32,9 +32,17 @@ export default function Navbar() {
                                     <Link href="/exchanges" className="py-1 px-3 hover:text-zinc-500">
                                         Exchanges
                                     </Link>
+                                    <Link href="/reports" className="py-1 px-3 hover:text-zinc-500">
+                                        Reports
+                                    </Link>
                                     <Link href="/points" className="py-1 px-3 hover:text-zinc-500">
                                         Buy Points
                                     </Link>
+                                    {user?.isAdmin && (
+                                        <Link href="/admin/reports" className="py-1 px-3 hover:text-zinc-500 text-orange-600 font-semibold">
+                                            Admin
+                                        </Link>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -82,9 +90,17 @@ export default function Navbar() {
                             <Link href="/exchanges" className="py-1 px-3" onClick={() => setIsMenuOpen(false)}>
                                 Exchanges
                             </Link>
+                            <Link href="/reports" className="py-1 px-3" onClick={() => setIsMenuOpen(false)}>
+                                Reports
+                            </Link>
                             <Link href="/points" className="py-1 px-3" onClick={() => setIsMenuOpen(false)}>
                                 Buy Points
                             </Link>
+                            {user?.isAdmin && (
+                                <Link href="/admin/reports" className="py-1 px-3 text-orange-600 font-semibold" onClick={() => setIsMenuOpen(false)}>
+                                    Admin
+                                </Link>
+                            )}
                         </>
                     )}
                     {isAuthenticated ? (

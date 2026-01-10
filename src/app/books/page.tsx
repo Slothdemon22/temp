@@ -302,7 +302,7 @@ export default function BooksPage() {
             <h3 className="text-2xl font-urbanist font-bold text-zinc-900 mb-6">
               Popular Books
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
               {books
                 .filter(b => b._count.wishlistItems > 0)
                 .sort((a, b) => b._count.wishlistItems - a._count.wishlistItems)
@@ -311,23 +311,27 @@ export default function BooksPage() {
                   <Link
                     key={book.id}
                     href={`/book/${book.id}`}
-                    className="bg-white border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] overflow-hidden hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow"
+                    className="bg-white border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] overflow-hidden hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow flex flex-col"
                   >
-                    {book.images && book.images.length > 0 && (
-                      <div className="aspect-[3/4] bg-gray-100">
+                    {book.images && book.images.length > 0 ? (
+                      <div className="aspect-[3/4] bg-gray-100 overflow-hidden">
                         <img
                           src={book.images[0]}
                           alt={book.title}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                         />
                       </div>
+                    ) : (
+                      <div className="aspect-[3/4] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                        <span className="text-4xl text-gray-400">📚</span>
+                      </div>
                     )}
-                    <div className="p-4">
-                      <h4 className="text-sm font-urbanist font-bold text-zinc-900 mb-1 line-clamp-1">
+                    <div className="p-4 flex flex-col flex-grow">
+                      <h4 className="text-sm font-urbanist font-bold text-zinc-900 mb-1 line-clamp-2 leading-tight">
                         {book.title}
                       </h4>
-                      <p className="text-xs text-zinc-500 mb-2">by {book.author}</p>
-                      <div className="flex items-center justify-between">
+                      <p className="text-xs text-zinc-500 mb-2 line-clamp-1">by {book.author}</p>
+                      <div className="mt-auto pt-2 border-t border-gray-100">
                         <span className="text-xs text-orange-500 font-medium">
                           ❤️ {book._count.wishlistItems} wishlist{book._count.wishlistItems !== 1 ? 's' : ''}
                         </span>
@@ -375,59 +379,57 @@ export default function BooksPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {books.map((book) => (
               <div
                 key={book.id}
-                className="bg-white border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] overflow-hidden hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow"
+                className="bg-white border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] overflow-hidden hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow flex flex-col"
               >
-                {book.images && book.images.length > 0 && (
-                  <div className="aspect-[3/4] bg-gray-100">
+                {book.images && book.images.length > 0 ? (
+                  <Link href={`/book/${book.id}`} className="block aspect-[3/4] bg-gray-100 overflow-hidden">
                     <img
                       src={book.images[0]}
                       alt={book.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                     />
-                  </div>
+                  </Link>
+                ) : (
+                  <Link href={`/book/${book.id}`} className="block aspect-[3/4] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                    <span className="text-4xl text-gray-400">📚</span>
+                  </Link>
                 )}
-                <div className="p-6">
-                  <Link href={`/book/${book.id}`}>
-                    <h3 className="text-xl font-urbanist font-bold text-zinc-900 mb-2 hover:text-orange-500 transition-colors">
+                <div className="p-4 flex flex-col flex-grow">
+                  <Link href={`/book/${book.id}`} className="block mb-1">
+                    <h3 className="text-sm font-urbanist font-bold text-zinc-900 line-clamp-2 hover:text-orange-500 transition-colors leading-tight">
                       {book.title}
                     </h3>
                   </Link>
-                  <p className="text-zinc-600 mb-2">
+                  <p className="text-xs text-zinc-600 mb-2 line-clamp-1">
                     by {book.author}
                   </p>
-                  {book.description && (
-                    <p className="text-sm text-zinc-500 mb-4 line-clamp-2">
-                      {book.description}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded-md">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-md whitespace-nowrap">
                       {BOOK_CONDITIONS.find((c) => c.value === book.condition)
                         ?.label || book.condition}
                     </span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-zinc-500 line-clamp-1">
                       📍 {book.location}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
                     <span className="text-xs text-zinc-500">
-                      {book._count.wishlistItems} wishlist
-                      {book._count.wishlistItems !== 1 ? 's' : ''}
+                      ❤️ {book._count.wishlistItems}
                     </span>
                     {isAuthenticated && (
                       <button
                         onClick={() => handleWishlistToggle(book.id)}
-                        className={`text-sm px-3 py-1.5 rounded-full transition-colors ${
+                        className={`text-xs px-2 py-1 rounded-full transition-colors ${
                           wishlistStatus[book.id]
                             ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
                             : 'bg-gray-100 text-zinc-700 hover:bg-gray-200'
                         }`}
                       >
-                        {wishlistStatus[book.id] ? '❤️ In Wishlist' : '🤍 Add to Wishlist'}
+                        {wishlistStatus[book.id] ? '❤️' : '🤍'}
                       </button>
                     )}
                   </div>

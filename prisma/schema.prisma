@@ -22,6 +22,7 @@ model User {
   name     String? // Optional name (users might want to stay anonymous)
   password String // Hashed password (bcrypt) - required for credentials auth
   points   Int     @default(20) // Starting balance for book exchanges
+  isAdmin  Boolean @default(false) // Admin flag for report resolution and moderation
 
   // Timestamps
   createdAt DateTime  @default(now())
@@ -50,6 +51,7 @@ model User {
   // Indexes for performance
   @@index([email])
   @@index([deletedAt]) // For filtering active users efficiently
+  @@index([isAdmin]) // For fast admin lookup
   @@map("users")
 }
 
