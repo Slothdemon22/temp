@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:chat": "tsx scripts/seed-chat-rooms.ts"
+    "seed:chat": "tsx scripts/seed-chat-rooms.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@100mslive/hms-video-store": "^0.12.39",
