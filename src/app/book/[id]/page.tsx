@@ -28,8 +28,10 @@ import { getReadingGuideAction } from '@/app/actions/reading-guide'
 import { generateBookHistoryUrl } from '@/lib/qr-code'
 import type { BookCondition } from '@/lib/books'
 import AskBookModal from '@/components/AskBookModal'
+import BuyPointsModal from '@/components/BuyPointsModal'
 import BackButton from '@/components/back-button'
 import ForumSection from '@/components/ForumSection'
+import { hasBooksToGiveAway } from '@/app/actions/points'
 
 const BOOK_CONDITIONS: { value: BookCondition; label: string }[] = [
   { value: 'POOR', label: 'Poor - Significant wear' },
@@ -77,6 +79,9 @@ export default function BookDetailPage() {
   const [bookPoints, setBookPoints] = useState<number | null>(null)
   const [loadingPoints, setLoadingPoints] = useState(false)
   const [askBookModalOpen, setAskBookModalOpen] = useState(false)
+  const [buyPointsModalOpen, setBuyPointsModalOpen] = useState(false)
+  const [hasBooks, setHasBooks] = useState<boolean | null>(null)
+  const [loadingBooks, setLoadingBooks] = useState(false)
   const [readingGuide, setReadingGuide] = useState<{
     difficultyLevel: 'Beginner' | 'Intermediate' | 'Advanced'
     recommendedReaderType: string
@@ -137,8 +142,22 @@ export default function BookDetailPage() {
     if (isAuthenticated && book) {
       checkWishlistStatus()
       loadUserPoints()
+      checkUserBooks()
     }
   }, [isAuthenticated, book])
+
+  const checkUserBooks = async () => {
+    if (!user) return
+    setLoadingBooks(true)
+    try {
+      const result = await hasBooksToGiveAway(user.id)
+      setHasBooks(result)
+    } catch (err) {
+      setHasBooks(false)
+    } finally {
+      setLoadingBooks(false)
+    }
+  }
 
   const loadUserPoints = async () => {
     if (!user) return
@@ -541,6 +560,15 @@ export default function BookDetailPage() {
                         💡 Value calculated using AI based on condition, demand, and rarity
                       </p>
                     )}
+                    {/* Show Buy Points button if user doesn't have enough points AND doesn't have books to give away */}
+                    {!loadingPoints && !loadingBooks && userPoints !== null && userPoints < requiredPoints && hasBooks === false && (
+                      <button
+                        onClick={() => setBuyPointsModalOpen(true)}
+                        className="w-full py-3 px-4 rounded-full font-semibold bg-linear-to-tl from-blue-600 to-blue-500 text-white hover:opacity-90 transition-all shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
+                      >
+                        💳 Buy Points
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -606,6 +634,14 @@ export default function BookDetailPage() {
         bookTitle={book.title}
         isOpen={askBookModalOpen}
         onClose={() => setAskBookModalOpen(false)}
+      />
+
+      {/* Buy Points Modal */}
+      <BuyPointsModal
+        isOpen={buyPointsModalOpen}
+        onClose={() => setBuyPointsModalOpen(false)}
+        requiredPoints={requiredPoints}
+        currentPoints={userPoints || 0}
       />
 
       {/* Community Discussions Forum */}

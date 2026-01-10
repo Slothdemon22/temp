@@ -47,23 +47,58 @@ export async function callGeminiAPI(prompt: string): Promise<string> {
     // Log the error for debugging
     console.error('[Gemini API] Error:', error)
 
-    // Handle specific error types
-    if (error?.message?.includes('API key')) {
-      throw new Error('Invalid or missing GEMINI_API_KEY')
-    }
+    const errorMessage = error?.message || 'Unknown error'
+    const errorString = JSON.stringify(error).toLowerCase()
 
-    if (error?.message?.includes('model') || error?.message?.includes('not found')) {
+    // Check for quota/rate limit errors FIRST (before model checks)
+    if (
+      errorMessage.includes('429') ||
+      errorMessage.includes('quota') ||
+      errorMessage.includes('rate limit') ||
+      errorMessage.includes('Too Many Requests') ||
+      errorString.includes('quota') ||
+      errorString.includes('rate limit')
+    ) {
       throw new Error(
-        `Gemini model "${GEMINI_MODEL}" is not available. ` +
-        `Please check that the model name is correct. Error: ${error.message}`
+        'Gemini API quota exceeded. You have reached your API usage limit. ' +
+        'Please check your plan and billing details at https://ai.google.dev/gemini-api/docs/rate-limits. ' +
+        'To monitor your usage, visit https://ai.dev/rate-limit'
       )
     }
 
-    if (error?.message?.includes('SAFETY') || error?.message?.includes('safety')) {
+    // Check for API key errors
+    if (
+      errorMessage.includes('API key') ||
+      errorMessage.includes('401') ||
+      errorMessage.includes('403') ||
+      errorMessage.includes('Unauthorized') ||
+      errorMessage.includes('Forbidden')
+    ) {
+      throw new Error('Invalid or missing GEMINI_API_KEY. Please check your API key.')
+    }
+
+    // Check for model not found errors (but NOT if it's in a URL path)
+    if (
+      (errorMessage.includes('not found') || errorMessage.includes('404')) &&
+      !errorMessage.includes('models/') && // Don't match if it's just in the URL
+      errorMessage.toLowerCase().includes('model')
+    ) {
+      throw new Error(
+        `Gemini model "${GEMINI_MODEL}" is not available. ` +
+        `Please check that the model name is correct. Error: ${errorMessage}`
+      )
+    }
+
+    // Check for safety filter errors
+    if (
+      errorMessage.includes('SAFETY') ||
+      errorMessage.includes('safety') ||
+      errorMessage.includes('blocked')
+    ) {
       throw new Error('Response blocked by safety filters')
     }
 
     // Throw the original error message
-    throw new Error(`Gemini API error: ${error?.message || 'Unknown error'}`)
+    throw new Error(`Gemini API error: ${errorMessage}`)
   }
 }
