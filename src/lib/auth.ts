@@ -1,5 +1,5 @@
 /**
- * Authentication utilities for BooksExchange
+ * Authentication utilities for Readloom
  * 
  * This file provides password hashing and validation utilities.
  * Password hashing uses bcryptjs for security.

@@ -17,6 +17,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { getBookWithHistoryAction, addHistoryEntryAction } from '@/app/actions/book-history'
+import BackButton from '@/components/back-button'
 
 interface BookHistoryEntry {
   id: string
@@ -116,20 +117,20 @@ export default function BookHistoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
-        <p className="text-zinc-600 dark:text-zinc-400">Loading book history...</p>
+      <div className="min-h-screen bg-white pt-28 flex items-center justify-center px-4 md:px-16 lg:px-24 xl:px-32">
+        <p className="text-zinc-500">Loading book history...</p>
       </div>
     )
   }
 
   if (error && !book) {
     return (
-      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-white pt-28 flex items-center justify-center px-4 md:px-16 lg:px-24 xl:px-32">
         <div className="text-center">
-          <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+          <p className="text-red-600 mb-4">{error}</p>
           <Link
             href="/books"
-            className="text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-orange-500 hover:text-orange-600 transition-colors"
           >
             Back to Books
           </Link>
@@ -141,27 +142,28 @@ export default function BookHistoryPage() {
   if (!book) return null
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-zinc-900 dark:to-zinc-800 py-12 px-4">
+    <div className="min-h-screen bg-white pt-28 pb-16 px-4 md:px-16 lg:px-24 xl:px-32">
       <div className="max-w-4xl mx-auto">
+        <BackButton href={`/book/${bookId}`} label="Back to Book Details" />
         {/* Header */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-8 mb-8">
+        <div className="bg-white/50 backdrop-blur border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] p-6 md:p-8 mb-8">
           <div className="flex flex-col md:flex-row gap-8">
             {/* Book Info */}
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
+              <h1 className="text-3xl md:text-4xl font-urbanist font-bold text-zinc-900 mb-2">
                 {book.title}
               </h1>
-              <p className="text-xl text-zinc-600 dark:text-zinc-400 mb-6">
+              <p className="text-xl text-zinc-600 mb-6">
                 by {book.author}
               </p>
               
               {book.description && (
-                <p className="text-zinc-600 dark:text-zinc-400 mb-4">
+                <p className="text-zinc-600 mb-4">
                   {book.description}
                 </p>
               )}
 
-              <div className="flex items-center gap-4 text-sm text-zinc-500 dark:text-zinc-500">
+              <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
                 <span>📍 {book.location}</span>
                 <span>📚 {book.historyEntries.length} reader{book.historyEntries.length !== 1 ? 's' : ''}</span>
               </div>
@@ -169,7 +171,7 @@ export default function BookHistoryPage() {
 
             {/* QR Code */}
             <div className="flex flex-col items-center">
-              <div className="bg-white p-4 rounded-lg border-2 border-zinc-200 dark:border-zinc-700">
+              <div className="bg-white p-4 rounded-xl border-2 border-gray-200 shadow-lg">
                 <img
                   src={`/api/qr-code/${bookId}`}
                   alt={`QR code for ${book.title}`}
@@ -178,7 +180,7 @@ export default function BookHistoryPage() {
                   height={256}
                 />
               </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 text-center max-w-[200px]">
+              <p className="text-xs text-zinc-500 mt-2 text-center max-w-[200px]">
                 Scan to view this book's journey
               </p>
             </div>
@@ -190,7 +192,7 @@ export default function BookHistoryPage() {
           <div className="mb-6">
             <button
               onClick={() => setShowAddForm(true)}
-              className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              className="w-full py-3 px-4 bg-linear-to-tl from-orange-600 to-orange-500 text-white rounded-full hover:opacity-90 transition-all font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
             >
               ✍️ Add Your Reading Experience
             </button>
@@ -198,20 +200,20 @@ export default function BookHistoryPage() {
         )}
 
         {isOwner && showAddForm && (
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-6 mb-8">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-4">
+          <div className="bg-white/50 backdrop-blur border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] p-6 mb-8">
+            <h2 className="text-xl font-urbanist font-bold text-zinc-900 mb-4">
               Share Your Reading Experience
             </h2>
             
             {error && (
-              <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                <label className="block text-sm font-medium text-zinc-700 mb-2">
                   City <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -219,33 +221,33 @@ export default function BookHistoryPage() {
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                   placeholder="Where did you read this book?"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                <label className="block text-sm font-medium text-zinc-700 mb-2">
                   Reading Duration
                 </label>
                 <input
                   type="text"
                   value={formData.readingDuration}
                   onChange={(e) => setFormData({ ...formData, readingDuration: e.target.value })}
-                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                   placeholder="e.g., 2 weeks, 1 month"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                <label className="block text-sm font-medium text-zinc-700 mb-2">
                   Notes
                 </label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={4}
-                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                   placeholder="Share your thoughts, favorite quotes, or reading experience..."
                 />
               </div>
@@ -254,7 +256,7 @@ export default function BookHistoryPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50"
+                  className="flex-1 py-2.5 px-4 bg-linear-to-tl from-orange-600 to-orange-500 text-white rounded-full hover:opacity-90 transition-all font-semibold disabled:opacity-50 shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
                 >
                   {submitting ? 'Adding...' : 'Add to History'}
                 </button>
@@ -265,7 +267,7 @@ export default function BookHistoryPage() {
                     setFormData({ city: '', readingDuration: '', notes: '' })
                     setError('')
                   }}
-                  className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                  className="px-4 py-2.5 bg-gray-100 text-zinc-700 rounded-full hover:bg-gray-200 transition-colors"
                 >
                   Cancel
                 </button>
@@ -275,18 +277,18 @@ export default function BookHistoryPage() {
         )}
 
         {/* Timeline */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-6">
+        <div className="bg-white/50 backdrop-blur border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] p-6 md:p-8">
+          <h2 className="text-2xl font-urbanist font-bold text-zinc-900 mb-6">
             📖 This Book's Journey
           </h2>
 
           {book.historyEntries.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-zinc-600 dark:text-zinc-400 mb-4">
+              <p className="text-zinc-600 mb-4">
                 This book's journey hasn't started yet.
               </p>
               {isOwner && (
-                <p className="text-sm text-zinc-500 dark:text-zinc-500">
+                <p className="text-sm text-zinc-500">
                   Be the first to share your reading experience!
                 </p>
               )}
@@ -294,29 +296,29 @@ export default function BookHistoryPage() {
           ) : (
             <div className="relative">
               {/* Timeline Line */}
-              <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-indigo-600 dark:from-blue-600 dark:to-indigo-800"></div>
+              <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-orange-400 to-orange-600"></div>
 
               {/* Timeline Entries */}
               <div className="space-y-8">
                 {book.historyEntries.map((entry, index) => (
                   <div key={entry.id} className="relative pl-12">
                     {/* Timeline Dot */}
-                    <div className="absolute left-0 top-2 w-8 h-8 bg-blue-600 rounded-full border-4 border-white dark:border-zinc-900 flex items-center justify-center">
+                    <div className="absolute left-0 top-2 w-8 h-8 bg-orange-500 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
                       <span className="text-white text-xs font-bold">{index + 1}</span>
                     </div>
 
                     {/* Entry Content */}
-                    <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg p-6 border border-zinc-200 dark:border-zinc-700">
+                    <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h3 className="font-semibold text-zinc-900 dark:text-white">
+                          <h3 className="font-urbanist font-semibold text-zinc-900">
                             {entry.displayName || 'Anonymous Reader'}
                           </h3>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-500">
+                          <p className="text-sm text-zinc-500">
                             📍 {entry.city}
                           </p>
                         </div>
-                        <p className="text-xs text-zinc-400 dark:text-zinc-600">
+                        <p className="text-xs text-zinc-400">
                           {new Date(entry.createdAt).toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'long',
@@ -326,13 +328,13 @@ export default function BookHistoryPage() {
                       </div>
 
                       {entry.readingDuration && (
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+                        <p className="text-sm text-zinc-600 mb-2">
                           ⏱️ Reading duration: {entry.readingDuration}
                         </p>
                       )}
 
                       {entry.notes && (
-                        <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">
+                        <p className="text-zinc-700 whitespace-pre-wrap">
                           {entry.notes}
                         </p>
                       )}
@@ -344,15 +346,6 @@ export default function BookHistoryPage() {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <Link
-            href={`/book/${bookId}`}
-            className="text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            ← View Book Details
-          </Link>
-        </div>
       </div>
     </div>
   )

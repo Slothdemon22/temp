@@ -1,14 +1,9 @@
 import type { NextConfig } from "next";
 
-const nextConfig = {
-  // Skip linting and type checking during builds
-  // eslint: {
-  //   ignoreDuringBuilds: true,
-  // },
-  // typescript: {
-  //   ignoreBuildErrors: true,
-  // },
-
+const nextConfig: NextConfig = {
+  images: {
+    unoptimized: true,
+  },
   // Turbopack configuration
   turbopack: {
     resolveAlias: {

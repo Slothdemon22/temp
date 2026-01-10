@@ -1,5 +1,5 @@
 /**
- * NextAuth Configuration for BooksExchange
+ * NextAuth Configuration for Readloom
  * 
  * This configuration sets up authentication using:
  * - Credentials provider (email + password)

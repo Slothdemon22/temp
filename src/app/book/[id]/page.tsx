@@ -24,9 +24,12 @@ import {
 import { updateBookAvailabilityAction, deleteBookAction } from '@/app/actions/books'
 import { requestExchangeAction } from '@/app/actions/exchanges'
 import { getBookPointsAction } from '@/app/actions/book-points'
+import { getReadingGuideAction } from '@/app/actions/reading-guide'
 import { generateBookHistoryUrl } from '@/lib/qr-code'
 import type { BookCondition } from '@/lib/books'
 import AskBookModal from '@/components/AskBookModal'
+import BackButton from '@/components/back-button'
+import ForumSection from '@/components/ForumSection'
 
 const BOOK_CONDITIONS: { value: BookCondition; label: string }[] = [
   { value: 'POOR', label: 'Poor - Significant wear' },
@@ -74,6 +77,13 @@ export default function BookDetailPage() {
   const [bookPoints, setBookPoints] = useState<number | null>(null)
   const [loadingPoints, setLoadingPoints] = useState(false)
   const [askBookModalOpen, setAskBookModalOpen] = useState(false)
+  const [readingGuide, setReadingGuide] = useState<{
+    difficultyLevel: 'Beginner' | 'Intermediate' | 'Advanced'
+    recommendedReaderType: string
+    suggestedReadingPace: string
+    tips: string[]
+  } | null>(null)
+  const [loadingGuide, setLoadingGuide] = useState(false)
 
   const isOwner = book && user && book.currentOwner.id === user.id
 
@@ -81,6 +91,7 @@ export default function BookDetailPage() {
   useEffect(() => {
     if (book) {
       loadBookPoints()
+      loadReadingGuide()
     }
   }, [book])
 
@@ -97,6 +108,22 @@ export default function BookDetailPage() {
       // Ignore errors, will use fallback
     } finally {
       setLoadingPoints(false)
+    }
+  }
+
+  const loadReadingGuide = async () => {
+    if (!book) return
+    
+    setLoadingGuide(true)
+    try {
+      const result = await getReadingGuideAction(book.id)
+      if (result.success && result.guide) {
+        setReadingGuide(result.guide)
+      }
+    } catch (err) {
+      // Ignore errors, guide is optional
+    } finally {
+      setLoadingGuide(false)
     }
   }
 
@@ -244,20 +271,20 @@ export default function BookDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
-        <p className="text-zinc-600 dark:text-zinc-400">Loading book...</p>
+      <div className="min-h-screen bg-white pt-28 flex items-center justify-center px-4 md:px-16 lg:px-24 xl:px-32">
+        <p className="text-zinc-500">Loading book...</p>
       </div>
     )
   }
 
   if (error && !book) {
     return (
-      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-white pt-28 flex items-center justify-center px-4 md:px-16 lg:px-24 xl:px-32">
         <div className="text-center">
-          <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+          <p className="text-red-600 mb-4">{error}</p>
           <Link
             href="/books"
-            className="text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-orange-500 hover:text-orange-600 transition-colors"
           >
             Back to Books
           </Link>
@@ -269,28 +296,23 @@ export default function BookDetailPage() {
   if (!book) return null
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <Link
-          href="/books"
-          className="text-blue-600 dark:text-blue-400 hover:underline mb-6 inline-block"
-        >
-          ← Back to Books
-        </Link>
+    <div className="min-h-screen bg-white pt-28 pb-16 px-4 md:px-16 lg:px-24 xl:px-32">
+      <div className="max-w-5xl mx-auto">
+        <BackButton href="/books" label="Back to Books" />
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-sm text-red-800">{error}</p>
           </div>
         )}
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
+        <div className="bg-white/50 backdrop-blur border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 md:p-8">
             {/* Images */}
             <div>
               {book.images && book.images.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="aspect-[3/4] bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden">
+                  <div className="aspect-[3/4] bg-gray-100 rounded-xl overflow-hidden shadow-lg">
                     <img
                       src={book.images[0]}
                       alt={book.title}
@@ -302,7 +324,7 @@ export default function BookDetailPage() {
                       {book.images.slice(1, 5).map((image, idx) => (
                         <div
                           key={idx}
-                          className="aspect-square bg-zinc-100 dark:bg-zinc-800 rounded overflow-hidden"
+                          className="aspect-square bg-gray-100 rounded-lg overflow-hidden"
                         >
                           <img
                             src={image}
@@ -315,8 +337,8 @@ export default function BookDetailPage() {
                   )}
                 </div>
               ) : (
-                <div className="aspect-[3/4] bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                  <span className="text-zinc-400 dark:text-zinc-600 text-6xl">
+                <div className="aspect-[3/4] bg-gray-100 rounded-xl flex items-center justify-center">
+                  <span className="text-gray-400 text-6xl">
                     📚
                   </span>
                 </div>
@@ -326,72 +348,139 @@ export default function BookDetailPage() {
             {/* Book Info */}
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
+                <h1 className="text-3xl md:text-4xl font-urbanist font-bold text-zinc-900 mb-2">
                   {book.title}
                 </h1>
-                <p className="text-xl text-zinc-600 dark:text-zinc-400 mb-4">
+                <p className="text-xl text-zinc-600 mb-4">
                   by {book.author}
                 </p>
 
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-sm">
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-md text-sm font-medium">
                     {
                       BOOK_CONDITIONS.find((c) => c.value === book.condition)
                         ?.label || book.condition
                     }
                   </span>
-                  <span className="text-sm text-zinc-500 dark:text-zinc-500">
+                  <span className="text-sm text-zinc-500">
                     📍 {book.location}
                   </span>
-                  <span className="text-sm text-zinc-500 dark:text-zinc-500">
-                    {book._count.wishlistItems} wishlist
+                  <span className="text-sm text-zinc-500">
+                    ❤️ {book._count.wishlistItems} wishlist
                     {book._count.wishlistItems !== 1 ? 's' : ''}
                   </span>
                 </div>
 
                 <div className="mb-4">
                   <span
-                    className={`inline-block px-3 py-1 rounded text-sm font-semibold ${
+                    className={`inline-block px-3 py-1 rounded-md text-sm font-semibold ${
                       book.isAvailable
-                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-700'
                     }`}
                   >
-                    {book.isAvailable ? 'Available' : 'Not Available'}
+                    {book.isAvailable ? '✓ Available' : '✗ Not Available'}
                   </span>
                 </div>
               </div>
 
               {book.description && (
                 <div>
-                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
+                  <h2 className="text-lg font-urbanist font-semibold text-zinc-900 mb-2">
                     Description
                   </h2>
-                  <p className="text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">
+                  <p className="text-zinc-600 whitespace-pre-wrap">
                     {book.description}
                   </p>
                 </div>
               )}
 
+              {/* Reading Guide */}
+              <div className="border-t border-gray-200 pt-6">
+                <h2 className="text-lg font-urbanist font-semibold text-zinc-900 mb-4">
+                  📖 Reading Guide
+                </h2>
+                {loadingGuide ? (
+                  <div className="text-sm text-zinc-500">
+                    Generating reading guide...
+                  </div>
+                ) : readingGuide ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-zinc-700">Difficulty Level:</span>
+                      <span
+                        className={`px-3 py-1 rounded-md text-sm font-semibold ${
+                          readingGuide.difficultyLevel === 'Beginner'
+                            ? 'bg-green-100 text-green-700'
+                            : readingGuide.difficultyLevel === 'Intermediate'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}
+                      >
+                        {readingGuide.difficultyLevel}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-sm font-medium text-zinc-700 block mb-1">
+                        Recommended For:
+                      </span>
+                      <p className="text-sm text-zinc-600">
+                        {readingGuide.recommendedReaderType}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span className="text-sm font-medium text-zinc-700 block mb-1">
+                        Suggested Reading Pace:
+                      </span>
+                      <p className="text-sm text-zinc-600">
+                        {readingGuide.suggestedReadingPace}
+                      </p>
+                    </div>
+
+                    {readingGuide.tips && readingGuide.tips.length > 0 && (
+                      <div>
+                        <span className="text-sm font-medium text-zinc-700 block mb-2">
+                          Tips to Understand Better:
+                        </span>
+                        <ul className="space-y-2">
+                          {readingGuide.tips.map((tip, index) => (
+                            <li key={index} className="text-sm text-zinc-600 flex items-start gap-2">
+                              <span className="text-orange-500 mt-1">•</span>
+                              <span>{tip}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-zinc-500">
+                    Reading guide unavailable at this time.
+                  </div>
+                )}
+              </div>
+
               <div>
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
+                <h2 className="text-lg font-urbanist font-semibold text-zinc-900 mb-2">
                   Current Owner
                 </h2>
-                <p className="text-zinc-600 dark:text-zinc-400">
+                <p className="text-zinc-600">
                   {book.currentOwner.name || 'Anonymous User'}
                 </p>
               </div>
 
               {/* QR Code */}
-              <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6">
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3">
+              <div className="border-t border-gray-200 pt-6">
+                <h2 className="text-lg font-urbanist font-semibold text-zinc-900 mb-3">
                   📱 Book History QR Code
                 </h2>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                <p className="text-sm text-zinc-500 mb-4">
                   Scan this QR code to view this book's journey through different readers
                 </p>
                 <div className="flex flex-col items-center">
-                  <div className="bg-white p-4 rounded-lg border-2 border-zinc-200 dark:border-zinc-700">
+                  <div className="bg-white p-4 rounded-xl border-2 border-gray-200 shadow-lg">
                     <img
                       src={`/api/qr-code/${book.id}`}
                       alt={`QR code for ${book.title}`}
@@ -402,7 +491,7 @@ export default function BookDetailPage() {
                   </div>
                   <Link
                     href={`/book-history/${book.id}`}
-                    className="mt-3 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    className="mt-3 text-sm text-orange-500 hover:text-orange-600 transition-colors font-medium"
                   >
                     View Book History →
                   </Link>
@@ -410,11 +499,11 @@ export default function BookDetailPage() {
               </div>
 
               {/* Actions */}
-              <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+              <div className="space-y-3 pt-4 border-t border-gray-200">
                 {/* Ask This Book - Available to everyone */}
                 <button
                   onClick={() => setAskBookModalOpen(true)}
-                  className="w-full py-3 px-4 rounded-lg font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                  className="w-full py-3 px-4 rounded-full font-semibold bg-linear-to-tl from-purple-600 to-purple-500 text-white hover:opacity-90 transition-all shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
                 >
                   🤖 Ask This Book
                 </button>
@@ -424,7 +513,7 @@ export default function BookDetailPage() {
                     <button
                       onClick={handleRequestExchange}
                       disabled={requestingExchange || loadingPoints || (userPoints !== null && userPoints < requiredPoints)}
-                      className="w-full py-3 px-4 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-3 px-4 rounded-full font-semibold bg-linear-to-tl from-green-600 to-green-500 text-white hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
                     >
                       {requestingExchange
                         ? 'Requesting...'
@@ -433,10 +522,10 @@ export default function BookDetailPage() {
                         : `📖 Request Exchange (${requiredPoints} points)`}
                     </button>
                     {userPoints !== null && (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center">
+                      <p className="text-xs text-zinc-500 text-center">
                         Your points: {userPoints} | Required: {requiredPoints}
                         {loadingPoints && (
-                          <span className="block text-blue-500 mt-1">
+                          <span className="block text-orange-500 mt-1">
                             AI calculating value...
                           </span>
                         )}
@@ -448,7 +537,7 @@ export default function BookDetailPage() {
                       </p>
                     )}
                     {bookPoints && (
-                      <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center italic">
+                      <p className="text-xs text-zinc-400 text-center italic">
                         💡 Value calculated using AI based on condition, demand, and rarity
                       </p>
                     )}
@@ -459,11 +548,11 @@ export default function BookDetailPage() {
                   <button
                     onClick={handleWishlistToggle}
                     disabled={wishlistLoading}
-                    className={`w-full py-2 px-4 rounded-lg font-semibold transition-colors ${
+                    className={`w-full py-2.5 px-4 rounded-full font-semibold transition-all disabled:opacity-50 ${
                       inWishlist
-                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-                    } hover:bg-blue-200 dark:hover:bg-blue-800 disabled:opacity-50`}
+                        ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                        : 'bg-gray-100 text-zinc-700 hover:bg-gray-200'
+                    }`}
                   >
                     {wishlistLoading
                       ? 'Loading...'
@@ -478,7 +567,7 @@ export default function BookDetailPage() {
                     <button
                       onClick={handleToggleAvailability}
                       disabled={updatingAvailability}
-                      className="w-full py-2 px-4 rounded-lg font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                      className="w-full py-2.5 px-4 rounded-full font-semibold bg-gray-100 text-zinc-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
                     >
                       {updatingAvailability
                         ? 'Updating...'
@@ -490,7 +579,7 @@ export default function BookDetailPage() {
                     <button
                       onClick={handleDelete}
                       disabled={deleting}
-                      className="w-full py-2 px-4 rounded-lg font-semibold bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-800 transition-colors disabled:opacity-50"
+                      className="w-full py-2.5 px-4 rounded-full font-semibold bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
                     >
                       {deleting ? 'Deleting...' : 'Delete Book'}
                     </button>
@@ -500,7 +589,7 @@ export default function BookDetailPage() {
                 {!isAuthenticated && (
                   <Link
                     href={`/login?callbackUrl=/book/${bookId}`}
-                    className="block w-full py-2 px-4 rounded-lg font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-center"
+                    className="block w-full py-2.5 px-4 rounded-full font-semibold bg-gray-100 text-zinc-700 hover:bg-gray-200 transition-colors text-center"
                   >
                     Sign in to add to wishlist
                   </Link>
@@ -518,6 +607,9 @@ export default function BookDetailPage() {
         isOpen={askBookModalOpen}
         onClose={() => setAskBookModalOpen(false)}
       />
+
+      {/* Community Discussions Forum */}
+      <ForumSection bookId={book.id} />
     </div>
   )
 }

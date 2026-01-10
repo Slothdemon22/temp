@@ -30,6 +30,33 @@
 
 import QRCode from 'qrcode'
 
+  /**
+ * Get the public base URL for the application
+ * 
+ * Priority:
+ * 1. NEXT_PUBLIC_APP_URL (explicitly set)
+ * 2. VERCEL_URL (Vercel deployment)
+ * 3. Empty string (fallback to relative URL - not recommended for production)
+ * 
+ * @returns Base URL without trailing slash
+ */
+function getPublicBaseUrl(): string {
+  // Priority 1: Explicitly set public URL
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '') // Remove trailing slash
+  }
+
+  // Priority 2: Vercel URL (for Vercel deployments)
+  if (process.env.VERCEL_URL) {
+    const protocol = process.env.VERCEL_ENV === 'production' ? 'https' : 'http'
+    return `${protocol}://${process.env.VERCEL_URL}`
+  }
+
+  // Fallback: empty string (will create relative URL)
+  // This should only happen in development
+  return ''
+}
+
 /**
  * Generate QR code URL for a book
  * 
@@ -37,20 +64,22 @@ import QRCode from 'qrcode'
  * The bookId is a UUID that remains constant throughout the book's lifetime.
  * 
  * @param bookId - Book UUID
- * @param baseUrl - Base URL of the application (optional, defaults to current origin)
+ * @param baseUrl - Base URL of the application (optional, will use environment variables if not provided)
  * @returns Full URL to book history page
  */
 export function generateBookHistoryUrl(
   bookId: string,
   baseUrl?: string
 ): string {
-  // If baseUrl is provided, use it
-  // Otherwise, construct from environment or use relative path
-  const url = baseUrl || process.env.NEXT_PUBLIC_APP_URL || ''
+  // Use provided baseUrl, or get from environment
+  const url = baseUrl || getPublicBaseUrl()
+
+  // Remove trailing slash if present
+  const cleanUrl = url.replace(/\/$/, '')
 
   // Construct permanent URL
   // This URL never changes - bookId is permanent
-  return `${url}/book-history/${bookId}`
+  return `${cleanUrl}/book-history/${bookId}`
 }
 
 /**

@@ -1,4 +1,4 @@
-// Prisma schema for BooksExchange
+// Prisma schema for Readloom
 // This schema is designed for a book swapping platform with points-based exchanges
 
 generator client {
@@ -40,9 +40,9 @@ model User {
   exchangesSent     Exchange[] @relation("ExchangeFromUser") // Exchanges where user is the owner
   exchangesReceived Exchange[] @relation("ExchangeToUser") // Exchanges where user is the requester
 
-  // Future relationships
-  // messages        Message[]
-  // forumPosts      ForumPost[]
+  // Forum relationships
+  forumPosts ForumPost[] // Posts created by this user
+  forumReplies ForumReply[] // Replies created by this user
 
   // Indexes for performance
   @@index([email])
@@ -149,6 +149,7 @@ model Book {
   wishlistItems  Wishlist[] // Users who have this book in their wishlist
   exchanges      Exchange[] // Exchanges involving this book
   historyEntries BookHistoryEntry[] // History entries for this book
+  forumPosts     ForumPost[] // Forum discussions about this book
 
   // Indexes for performance
   @@index([currentOwnerId]) // Fast lookup of user's books
@@ -289,4 +290,101 @@ model BookHistoryEntry {
   @@index([bookId]) // Fast lookup of all entries for a book
   @@index([createdAt]) // For chronological ordering
   @@map("book_history_entries")
+}
+
+// Forum Post Model - Book-Centric and General Community Discussions
+//
+// CRITICAL DESIGN PRINCIPLES:
+// 1. Forum content survives user account deletion (userId is nullable)
+// 2. Anonymous posting is supported (isAnonymous flag)
+// 3. AI moderation flags abusive content (flagged field)
+// 4. Posts can be tied to specific books OR general community discussions
+//
+// Why bookId is nullable:
+// - Allows general community posts (not tied to a specific book)
+// - Book-specific posts have bookId set
+// - General posts have bookId = null
+//
+// Why userId is nullable:
+// - If user deletes account, forum posts remain (community value)
+// - Allows for future guest posting if needed
+// - Backend still tracks userId for moderation even if anonymous
+//
+// Why isAnonymous flag:
+// - Encourages honest discussions without fear
+// - Users can choose privacy when sharing sensitive opinions
+// - Frontend hides username when isAnonymous = true
+//
+// Why flagged field:
+// - AI moderation marks abusive content
+// - Flagged posts are hidden from public view
+// - Allows manual review in future
+model ForumPost {
+  id String @id @default(uuid())
+
+  // Book this post is about (nullable for general community posts)
+  bookId String?
+  book   Book?  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  // User who created the post (nullable for content persistence)
+  // Even if anonymous, we store userId for moderation tracking
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Post content
+  content String @db.Text // The actual discussion content
+
+  // Anonymity and moderation
+  isAnonymous Boolean @default(false) // If true, hide username on frontend
+  flagged     Boolean @default(false) // AI moderation flag (hide if true)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  replies ForumReply[] // Replies to this post
+
+  // Indexes for performance
+  @@index([bookId]) // Fast lookup of posts for a book (null for general posts)
+  @@index([userId]) // Fast lookup of user's posts (for moderation)
+  @@index([flagged]) // Fast filtering of flagged posts
+  @@index([createdAt]) // For chronological ordering
+  @@map("forum_posts")
+}
+
+// Forum Reply Model - Replies to Forum Posts
+//
+// DESIGN PRINCIPLES:
+// - Same anonymity and moderation features as ForumPost
+// - Replies are tied to specific posts
+// - Content persists even if user account is deleted
+model ForumReply {
+  id String @id @default(uuid())
+
+  // Post this reply belongs to
+  postId String
+  post   ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  // User who created the reply (nullable for content persistence)
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Reply content
+  content String @db.Text // The reply content
+
+  // Anonymity and moderation
+  isAnonymous Boolean @default(false) // If true, hide username on frontend
+  flagged     Boolean @default(false) // AI moderation flag (hide if true)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Indexes for performance
+  @@index([postId]) // Fast lookup of replies for a post
+  @@index([userId]) // Fast lookup of user's replies (for moderation)
+  @@index([flagged]) // Fast filtering of flagged replies
+  @@index([createdAt]) // For chronological ordering
+  @@map("forum_replies")
 }

@@ -1,4 +1,4 @@
-# BooksExchange - Implementation Summary
+# Readloom - Implementation Summary
 
 ## ✅ Completed Features
 

@@ -151,7 +151,7 @@ export async function calculateBookPoints(
   // Construct structured prompt for Gemini
   // CRITICAL: Only include the three allowed signals
   // No user-controlled free text to prevent manipulation
-  const prompt = `You are an assistant evaluating the value of a physical book in a community book exchange system.
+  const prompt = `You are an assistant evaluating the value of a physical book in Readloom, a community book exchange system.
 
 Inputs:
 - Condition: ${condition}

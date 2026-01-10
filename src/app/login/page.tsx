@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from 'next-auth/react'
+import Image from 'next/image'
 
 /**
- * Login Page for BooksExchange
+ * Login Page for Readloom
  * 
  * Uses NextAuth's signIn function for authentication.
  * Supports redirect to callbackUrl after successful login.
@@ -54,27 +55,30 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
-              Sign in
+    <div className="min-h-screen flex items-center justify-center bg-[url('/assets/hero-gradient-bg.png')] bg-cover bg-center bg-no-repeat px-4 md:px-16 lg:px-24 xl:px-32 py-8 md:py-12">
+      <div className="w-full max-w-md my-auto">
+        <div className="bg-white/50 backdrop-blur border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] p-8 md:p-10">
+          <div className="mb-6 text-center">
+            <Link href="/" className="inline-block mb-4">
+              <Image src="/assets/readloom.svg" alt="Readloom Logo" width={150} height={40} />
+            </Link>
+            <h1 className="text-3xl md:text-4xl font-urbanist font-bold text-zinc-900 mb-2">
+              Welcome back
             </h1>
-            <p className="text-zinc-600 dark:text-zinc-400">
-              Welcome back to BooksExchange
+            <p className="text-sm md:text-base text-zinc-500">
+              Sign in to continue your reading journey
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-zinc-700 mb-2">
                 Email address
               </label>
               <input
@@ -83,14 +87,14 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                 placeholder="you@example.com"
                 autoComplete="email"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-zinc-700 mb-2">
                 Password
               </label>
               <input
@@ -99,7 +103,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                 placeholder="••••••••"
                 autoComplete="current-password"
               />
@@ -108,16 +112,16 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold py-3 px-4 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-linear-to-tl from-orange-600 to-orange-500 text-white font-semibold py-3 px-8 rounded-full hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-zinc-500">
               Don't have an account?{' '}
-              <Link href="/signup" className="font-semibold text-zinc-900 dark:text-white hover:underline">
+              <Link href="/signup" className="font-semibold text-orange-500 hover:text-orange-600 transition-colors">
                 Sign up
               </Link>
             </p>

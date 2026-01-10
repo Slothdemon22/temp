@@ -1,28 +1,14 @@
 /**
  * Google Gemini API Integration
- * 
- * This module provides server-side access to Google Gemini API for AI-based book valuation.
- * 
- * CRITICAL SECURITY:
- * - API key is NEVER exposed to client
- * - All calls happen server-side only
- * - Environment variable: GEMINI_API_KEY
- * 
- * Why AI for valuation:
- * - Dynamic pricing based on real demand signals
- * - Fair and resistant to manipulation
- * - Adapts to community preferences
- * - More sophisticated than fixed pricing
+ * Uses the official @google/generative-ai SDK
+ * Compatible with Google AI Studio API keys
  */
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-/**
- * Call Google Gemini API
- * 
- * @param prompt - The prompt to send to Gemini
- * @returns Response from Gemini API
- */
+// Hardcoded working model name - gemini-2.5-flash works with AI Studio API keys
+const GEMINI_MODEL = 'gemini-2.5-flash'
+
 export async function callGeminiAPI(prompt: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY
 
@@ -30,54 +16,54 @@ export async function callGeminiAPI(prompt: string): Promise<string> {
     throw new Error('GEMINI_API_KEY environment variable is not set')
   }
 
-  try {
-    const response = await fetch(
-      `${GEMINI_API_URL}?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-        }),
-      }
-    )
+  if (!prompt || !prompt.trim()) {
+    throw new Error('Prompt cannot be empty')
+  }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
+  try {
+    // Initialize Gemini client
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({ 
+      model: GEMINI_MODEL,
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 1024,
+      },
+    })
+
+    // Generate content
+    const result = await model.generateContent(prompt)
+    const response = await result.response
+    const text = response.text()
+
+    if (!text || !text.trim()) {
+      throw new Error('Empty response from Gemini API')
+    }
+
+    return text.trim()
+  } catch (error: any) {
+    // Log the error for debugging
+    console.error('[Gemini API] Error:', error)
+
+    // Handle specific error types
+    if (error?.message?.includes('API key')) {
+      throw new Error('Invalid or missing GEMINI_API_KEY')
+    }
+
+    if (error?.message?.includes('model') || error?.message?.includes('not found')) {
       throw new Error(
-        `Gemini API error: ${response.status} ${response.statusText}. ${JSON.stringify(errorData)}`
+        `Gemini model "${GEMINI_MODEL}" is not available. ` +
+        `Please check that the model name is correct. Error: ${error.message}`
       )
     }
 
-    const data = await response.json()
-
-    // Extract text from Gemini response
-    // Response structure: data.candidates[0].content.parts[0].text
-    if (
-      data.candidates &&
-      data.candidates[0] &&
-      data.candidates[0].content &&
-      data.candidates[0].content.parts &&
-      data.candidates[0].content.parts[0] &&
-      data.candidates[0].content.parts[0].text
-    ) {
-      return data.candidates[0].content.parts[0].text.trim()
+    if (error?.message?.includes('SAFETY') || error?.message?.includes('safety')) {
+      throw new Error('Response blocked by safety filters')
     }
 
-    throw new Error('Invalid response format from Gemini API')
-  } catch (error: any) {
-    console.error('Gemini API call failed:', error)
-    throw error
+    // Throw the original error message
+    throw new Error(`Gemini API error: ${error?.message || 'Unknown error'}`)
   }
 }
-

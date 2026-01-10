@@ -1,4 +1,4 @@
-# Complete Testing Checklist for BooksExchange
+# Complete Testing Checklist for Readloom
 
 ## Prerequisites
 

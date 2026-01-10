@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addBookAction } from '@/app/actions/books'
 import type { BookCondition } from '@/lib/books'
+import BackButton from '@/components/back-button'
 
 const BOOK_CONDITIONS: { value: BookCondition; label: string }[] = [
   { value: 'POOR', label: 'Poor - Significant wear' },
@@ -132,29 +133,30 @@ export default function AddBookPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black py-12 px-4">
+    <div className="min-h-screen bg-white pt-28 pb-16 px-4 md:px-16 lg:px-24 xl:px-32">
       <div className="max-w-2xl mx-auto">
+        <BackButton href="/books" />
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
+          <h1 className="text-3xl md:text-4xl font-urbanist font-bold text-zinc-900 mb-2">
             Add a Book
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-zinc-500">
             Share a book with the community. You'll become its owner.
           </p>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-8">
+        <div className="bg-white/50 backdrop-blur border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
 
             <div>
               <label
                 htmlFor="title"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                className="block text-sm font-medium text-zinc-700 mb-2"
               >
                 Title <span className="text-red-500">*</span>
               </label>
@@ -166,7 +168,7 @@ export default function AddBookPage() {
                   setFormData({ ...formData, title: e.target.value })
                 }
                 required
-                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                 placeholder="The Great Gatsby"
               />
             </div>
@@ -174,7 +176,7 @@ export default function AddBookPage() {
             <div>
               <label
                 htmlFor="author"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                className="block text-sm font-medium text-zinc-700 mb-2"
               >
                 Author <span className="text-red-500">*</span>
               </label>
@@ -186,7 +188,7 @@ export default function AddBookPage() {
                   setFormData({ ...formData, author: e.target.value })
                 }
                 required
-                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                 placeholder="F. Scott Fitzgerald"
               />
             </div>
@@ -194,7 +196,7 @@ export default function AddBookPage() {
             <div>
               <label
                 htmlFor="description"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                className="block text-sm font-medium text-zinc-700 mb-2"
               >
                 Description
               </label>
@@ -205,7 +207,7 @@ export default function AddBookPage() {
                   setFormData({ ...formData, description: e.target.value })
                 }
                 rows={4}
-                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                 placeholder="Brief description of the book..."
               />
             </div>
@@ -213,7 +215,7 @@ export default function AddBookPage() {
             <div>
               <label
                 htmlFor="condition"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                className="block text-sm font-medium text-zinc-700 mb-2"
               >
                 Condition <span className="text-red-500">*</span>
               </label>
@@ -227,7 +229,7 @@ export default function AddBookPage() {
                   })
                 }
                 required
-                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
               >
                 {BOOK_CONDITIONS.map((condition) => (
                   <option key={condition.value} value={condition.value}>
@@ -240,7 +242,7 @@ export default function AddBookPage() {
             <div>
               <label
                 htmlFor="location"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                className="block text-sm font-medium text-zinc-700 mb-2"
               >
                 Location <span className="text-red-500">*</span>
               </label>
@@ -252,10 +254,10 @@ export default function AddBookPage() {
                   setFormData({ ...formData, location: e.target.value })
                 }
                 required
-                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                 placeholder="New York, NY"
               />
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="mt-1 text-xs text-zinc-500">
                 City or region where the book is located
               </p>
             </div>
@@ -263,7 +265,7 @@ export default function AddBookPage() {
             <div>
               <label
                 htmlFor="images"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                className="block text-sm font-medium text-zinc-700 mb-2"
               >
                 Images (optional)
               </label>
@@ -275,20 +277,20 @@ export default function AddBookPage() {
                 accept="image/*"
                 multiple
                 onChange={handleFileChange}
-                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 dark:file:bg-zinc-700 file:text-zinc-900 dark:file:text-white hover:file:bg-zinc-200 dark:hover:file:bg-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-zinc-900 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-zinc-900 hover:file:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
               />
               
               {/* Selected Files Preview */}
               {selectedFiles.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  <p className="text-sm text-zinc-600">
                     Selected: {selectedFiles.length} file(s)
                   </p>
                   <button
                     type="button"
                     onClick={handleUploadImages}
                     disabled={uploadingImages}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+                    className="px-4 py-2 bg-linear-to-tl from-orange-600 to-orange-500 text-white rounded-full hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
                   >
                     {uploadingImages ? 'Uploading...' : 'Upload Images'}
                   </button>
@@ -298,7 +300,7 @@ export default function AddBookPage() {
               {/* Uploaded Images Preview */}
               {uploadedImageUrls.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <p className="text-sm font-medium text-zinc-700">
                     Uploaded Images ({uploadedImageUrls.length}):
                   </p>
                   <div className="grid grid-cols-3 gap-2">
@@ -307,7 +309,7 @@ export default function AddBookPage() {
                         <img
                           src={url}
                           alt={`Upload ${index + 1}`}
-                          className="w-full h-24 object-cover rounded border border-zinc-300 dark:border-zinc-700"
+                          className="w-full h-24 object-cover rounded-lg border border-gray-200"
                         />
                         <button
                           type="button"
@@ -322,7 +324,7 @@ export default function AddBookPage() {
                 </div>
               )}
 
-              <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="mt-2 text-xs text-zinc-500">
                 Upload images of your book (max 5MB per image)
               </p>
             </div>
@@ -330,7 +332,7 @@ export default function AddBookPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold py-3 px-4 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-linear-to-tl from-orange-600 to-orange-500 text-white font-semibold py-3 px-4 rounded-full hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[inset_0_2px_4px_rgba(255,255,255,0.6)]"
             >
               {loading ? 'Adding Book...' : 'Add Book'}
             </button>

@@ -27,11 +27,23 @@ export async function GET(
       )
     }
 
-    // Get base URL from request headers or environment
-    const baseUrl =
-      request.headers.get('origin') ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      ''
+    // Get base URL - prioritize environment variables for production
+    // This ensures QR codes work correctly when deployed
+    let baseUrl = process.env.NEXT_PUBLIC_APP_URL
+
+    // If not set, try Vercel URL (for Vercel deployments)
+    if (!baseUrl && process.env.VERCEL_URL) {
+      const protocol = process.env.VERCEL_ENV === 'production' ? 'https' : 'http'
+      baseUrl = `${protocol}://${process.env.VERCEL_URL}`
+    }
+
+    // Fallback to origin header (for development or when env vars not set)
+    if (!baseUrl) {
+      baseUrl = request.headers.get('origin') || ''
+    }
+
+    // Remove trailing slash if present
+    baseUrl = baseUrl.replace(/\/$/, '')
 
     // Generate QR code as data URL
     const dataUrl = await generateBookQRCode(bookId, baseUrl)
