@@ -10,7 +10,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 const GEMINI_MODEL = 'gemini-2.5-flash'
 
 export async function callGeminiAPI(prompt: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = "AIzaSyBLM38__NfyMI12Va4sGmE3ECJhSeYEmhQ"
 
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY environment variable is not set')
