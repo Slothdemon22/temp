@@ -10,7 +10,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 const GEMINI_MODEL = 'gemini-2.5-flash'
 
 export async function callGeminiAPI(prompt: string): Promise<string> {
-  const apiKey = "AIzaSyBLM38__NfyMI12Va4sGmE3ECJhSeYEmhQ"
+  const apiKey = process.env.GEMINI_API_KEY
 
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY environment variable is not set')
@@ -66,7 +66,19 @@ export async function callGeminiAPI(prompt: string): Promise<string> {
       )
     }
 
-    // Check for API key errors
+    // Check for leaked API key errors (specific error message from Google)
+    if (
+      errorMessage.includes('reported as leaked') ||
+      errorMessage.includes('leaked')
+    ) {
+      throw new Error(
+        'Your Gemini API key was reported as leaked and has been revoked. ' +
+        'Please generate a new API key at https://ai.google.dev/ and add it to your .env file as GEMINI_API_KEY. ' +
+        'Never commit API keys to version control!'
+      )
+    }
+
+    // Check for other API key errors
     if (
       errorMessage.includes('API key') ||
       errorMessage.includes('401') ||
