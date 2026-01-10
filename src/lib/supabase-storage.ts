@@ -17,18 +17,24 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+// Check if we're in build phase (environment variables may not be available)
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build' || 
+                     (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_SUPABASE_URL)
 
-if (!supabaseUrl) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
-}
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || (isBuildPhase ? 'https://placeholder.supabase.co' : '')
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || (isBuildPhase ? 'placeholder-key' : '')
 
-if (!supabaseServiceRoleKey) {
-  throw new Error(
-    'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
-    'This is required for server-side storage operations.'
-  )
+// Only throw error if not in build phase
+if (!isBuildPhase) {
+  if (!supabaseUrl) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+  }
+  if (!supabaseServiceRoleKey) {
+    throw new Error(
+      'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
+      'This is required for server-side storage operations.'
+    )
+  }
 }
 
 /**
@@ -36,9 +42,20 @@ if (!supabaseServiceRoleKey) {
  * 
  * Service role key bypasses RLS (Row Level Security) and has admin access.
  * This is safe because it's ONLY used on the server, never exposed to clients.
+ * 
+ * Note: Environment variables are checked at runtime, not build time,
+ * allowing the build to complete even if env vars are missing.
  */
 export function createStorageClient() {
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
+  // Re-check at runtime if we used placeholders during build
+  const runtimeUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const runtimeKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!runtimeUrl || !runtimeKey) {
+    throw new Error('Missing Supabase environment variables')
+  }
+  
+  return createClient(runtimeUrl, runtimeKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
