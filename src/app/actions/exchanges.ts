@@ -35,10 +35,13 @@ export async function requestExchangeAction(bookId: string) {
 
 /**
  * Server Action: Approve an exchange
+ * 
+ * @param exchangeId - Exchange UUID
+ * @param exchangePointId - Optional exchange point ID where exchange takes place
  */
-export async function approveExchangeAction(exchangeId: string) {
+export async function approveExchangeAction(exchangeId: string, exchangePointId?: string) {
   try {
-    const exchange = await approveExchangeLib(exchangeId)
+    const exchange = await approveExchangeLib(exchangeId, exchangePointId)
     revalidatePath('/exchanges')
     revalidatePath('/books')
     revalidatePath(`/book/${exchange.book.id}`)

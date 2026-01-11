@@ -22,6 +22,7 @@ import {
   rejectExchangeAction,
   cancelExchangeAction,
 } from '@/app/actions/exchanges'
+import { toast } from 'sonner'
 
 interface Exchange {
   id: string
@@ -57,6 +58,10 @@ export default function ExchangesPage() {
   const [userExchanges, setUserExchanges] = useState<Exchange[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [exchangePoints, setExchangePoints] = useState<any[]>([])
+  const [showExchangePointModal, setShowExchangePointModal] = useState(false)
+  const [selectedExchangeId, setSelectedExchangeId] = useState<string | null>(null)
+  const [selectedExchangePointId, setSelectedExchangePointId] = useState<string>('')
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [selectedExchange, setSelectedExchange] = useState<Exchange | null>(null)
@@ -89,28 +94,68 @@ export default function ExchangesPage() {
   useEffect(() => {
     if (isAuthenticated) {
       loadData()
+      loadExchangePoints()
     }
   }, [isAuthenticated, loadData])
+
+  const loadExchangePoints = async () => {
+    try {
+      const response = await fetch('/api/exchange-points')
+      const data = await response.json()
+      if (response.ok) {
+        setExchangePoints(data.exchangePoints || [])
+      }
+    } catch (error) {
+      console.error('Error loading exchange points:', error)
+    }
+  }
 
   const handleApprove = async (exchangeId: string) => {
     if (!confirm('Approve this exchange? Points will be deducted from the requester and transferred to you.')) {
       return
     }
 
+    // Show exchange point selection modal if there are exchange points available
+    if (exchangePoints.length > 0) {
+      setSelectedExchangeId(exchangeId)
+      setSelectedExchangePointId('')
+      setShowExchangePointModal(true)
+      return
+    }
+
+    // If no exchange points, approve without location
+    await approveExchange(exchangeId)
+  }
+
+  const approveExchange = async (exchangeId: string, exchangePointId?: string) => {
     setError('')
     try {
-      const result = await approveExchangeAction(exchangeId)
+      const result = await approveExchangeAction(exchangeId, exchangePointId)
 
       if (!result.success) {
         setError(result.error || 'Failed to approve exchange')
+        toast.error(result.error || 'Failed to approve exchange')
         return
       }
 
       await loadData()
-      alert('Exchange approved! Book ownership has been transferred.')
+      toast.success('Exchange approved! Book ownership has been transferred.')
+      setShowExchangePointModal(false)
+      setSelectedExchangeId(null)
+      setSelectedExchangePointId('')
     } catch (err: any) {
-      setError(err.message || 'Failed to approve exchange')
+      const errorMessage = err.message || 'Failed to approve exchange'
+      setError(errorMessage)
+      toast.error(errorMessage)
     }
+  }
+
+  const handleConfirmApprove = () => {
+    if (!selectedExchangeId) return
+    
+    // Exchange point selection is optional
+    const exchangePointId = selectedExchangePointId || undefined
+    approveExchange(selectedExchangeId, exchangePointId)
   }
 
   const handleReject = async (exchangeId: string) => {
@@ -128,8 +173,11 @@ export default function ExchangesPage() {
       }
 
       await loadData()
+      toast.success('Exchange request rejected')
     } catch (err: any) {
-      setError(err.message || 'Failed to reject exchange')
+      const errorMessage = err.message || 'Failed to reject exchange'
+      setError(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -148,8 +196,11 @@ export default function ExchangesPage() {
       }
 
       await loadData()
+      toast.success('Exchange request cancelled')
     } catch (err: any) {
-      setError(err.message || 'Failed to cancel exchange')
+      const errorMessage = err.message || 'Failed to cancel exchange'
+      setError(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -433,6 +484,57 @@ export default function ExchangesPage() {
             loadData() // Refresh exchanges after successful report
           }}
         />
+      )}
+
+      {/* Exchange Point Selection Modal */}
+      {showExchangePointModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-zinc-900 mb-4">
+              Select Exchange Location
+            </h2>
+            <p className="text-sm text-zinc-600 mb-4">
+              Choose where this exchange will take place (optional)
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-zinc-700 mb-2">
+                Exchange Point
+              </label>
+              <select
+                value={selectedExchangePointId}
+                onChange={(e) => setSelectedExchangePointId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="">No specific location</option>
+                {exchangePoints.map((point) => (
+                  <option key={point.id} value={point.id}>
+                    {point.name} - {point.address}, {point.city}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmApprove}
+                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                Approve Exchange
+              </button>
+              <button
+                onClick={() => {
+                  setShowExchangePointModal(false)
+                  setSelectedExchangeId(null)
+                  setSelectedExchangePointId('')
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

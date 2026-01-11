@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { toast } from 'sonner'
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
@@ -192,7 +193,7 @@ export default function UploadPage() {
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(uploadedUrl)
-                      alert('URL copied to clipboard!')
+                      toast.success('URL copied to clipboard!')
                     }}
                     className="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-white rounded-lg text-sm font-medium transition-colors"
                   >

@@ -28,11 +28,23 @@ import { getReadingGuideAction } from '@/app/actions/reading-guide'
 import { generateBookHistoryUrl } from '@/lib/qr-code'
 import type { BookCondition } from '@/lib/books'
 import AskBookModal from '@/components/AskBookModal'
+import { toast } from 'sonner'
 import BuyPointsModal from '@/components/BuyPointsModal'
 import BackButton from '@/components/back-button'
 import ForumSection from '@/components/ForumSection'
 import BookChat from '@/components/BookChat'
 import { hasBooksToGiveAway } from '@/app/actions/points'
+import dynamic from 'next/dynamic'
+
+// Dynamically import map component to avoid SSR issues with Leaflet
+const BookLocationMap = dynamic(() => import('@/components/BookLocationMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-64 bg-gray-200 flex items-center justify-center rounded-lg">
+      <p className="text-gray-500">Loading map...</p>
+    </div>
+  ),
+})
 
 const BOOK_CONDITIONS: { value: BookCondition; label: string }[] = [
   { value: 'POOR', label: 'Poor - Significant wear' },
@@ -49,6 +61,7 @@ interface Book {
   condition: BookCondition
   images: string[]
   location: string
+  chapters: string[]
   isAvailable: boolean
   computedPoints: number | null
   createdAt: Date
@@ -83,6 +96,7 @@ export default function BookDetailPage() {
   const [buyPointsModalOpen, setBuyPointsModalOpen] = useState(false)
   const [hasBooks, setHasBooks] = useState<boolean | null>(null)
   const [loadingBooks, setLoadingBooks] = useState(false)
+  const [exchangePoints, setExchangePoints] = useState<any[]>([])
   const [readingGuide, setReadingGuide] = useState<{
     difficultyLevel: 'Beginner' | 'Intermediate' | 'Advanced'
     recommendedReaderType: string
@@ -199,6 +213,22 @@ export default function BookDetailPage() {
     }
   }, [bookId, loadBook])
 
+  // Load exchange points
+  useEffect(() => {
+    const loadExchangePoints = async () => {
+      try {
+        const response = await fetch('/api/exchange-points')
+        const data = await response.json()
+        if (response.ok) {
+          setExchangePoints(data.exchangePoints || [])
+        }
+      } catch (error) {
+        console.error('Error loading exchange points:', error)
+      }
+    }
+    loadExchangePoints()
+  }, [])
+
   useEffect(() => {
     if (isAuthenticated && book && bookLoadedRef.current) {
       checkWishlistStatus()
@@ -255,9 +285,12 @@ export default function BookDetailPage() {
     setDeleting(true)
     try {
       await deleteBookAction(book.id)
+      toast.success('Book deleted successfully')
       router.push('/books')
     } catch (err: any) {
-      setError(err.message || 'Failed to delete book')
+      const errorMessage = err.message || 'Failed to delete book'
+      setError(errorMessage)
+      toast.error(errorMessage)
       setDeleting(false)
     }
   }
@@ -283,7 +316,7 @@ export default function BookDetailPage() {
 
       // Success - reload book to show updated status
       await loadBook()
-      alert('Exchange request sent! The owner will be notified.')
+      toast.success('Exchange request sent! The owner will be notified.')
     } catch (err: any) {
       setError(err.message || 'Failed to request exchange')
     } finally {
@@ -365,6 +398,21 @@ export default function BookDetailPage() {
                   </span>
                 </div>
               )}
+
+              {/* Location Map - Below book images */}
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-zinc-900 mb-2">
+                  📍 Location & Exchange Points
+                </h3>
+                <BookLocationMap
+                  bookLocation={book.location}
+                  exchangePoints={exchangePoints}
+                  height="300px"
+                />
+                <p className="text-xs text-zinc-500 mt-2">
+                  Showing exchange points in {book.location}
+                </p>
+              </div>
             </div>
 
             {/* Book Info */}
@@ -414,6 +462,30 @@ export default function BookDetailPage() {
                   <p className="text-zinc-600 whitespace-pre-wrap">
                     {book.description}
                   </p>
+                </div>
+              )}
+
+              {/* Chapters */}
+              {book.chapters && book.chapters.length > 0 && (
+                <div>
+                  <h2 className="text-lg font-urbanist font-semibold text-zinc-900 mb-3">
+                    📚 Chapters ({book.chapters.length})
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {book.chapters.map((chapter, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                      >
+                        <span className="text-sm font-semibold text-orange-500 w-8">
+                          {index + 1}.
+                        </span>
+                        <span className="text-sm text-zinc-700 flex-1">
+                          {chapter}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

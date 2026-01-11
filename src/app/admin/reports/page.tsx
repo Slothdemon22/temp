@@ -14,6 +14,7 @@ import {
   resolveReportAction,
   rejectReportAction,
 } from '@/app/actions/reports'
+import { toast } from 'sonner'
 
 interface Report {
   id: string
@@ -106,9 +107,11 @@ export default function AdminReportsPage() {
       }
 
       await loadReports()
-      alert('Report resolved successfully!')
+      toast.success('Report resolved successfully!')
     } catch (err: any) {
-      setError(err.message || 'Failed to resolve report')
+      const errorMessage = err.message || 'Failed to resolve report'
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setProcessingId(null)
     }
@@ -135,9 +138,11 @@ export default function AdminReportsPage() {
       }
 
       await loadReports()
-      alert('Report rejected successfully!')
+      toast.success('Report rejected successfully!')
     } catch (err: any) {
-      setError(err.message || 'Failed to reject report')
+      const errorMessage = err.message || 'Failed to reject report'
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setProcessingId(null)
     }

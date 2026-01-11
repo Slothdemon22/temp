@@ -16,12 +16,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { getUserBooksAction } from '@/app/actions/books'
+import { getUserBooksAction, getUserDeletedBooksAction, toggleBookDeleteAction } from '@/app/actions/books'
 import { getUserWishlistAction } from '@/app/actions/wishlist'
 import { getUserExchangesAction } from '@/app/actions/exchanges'
 import { signOut } from 'next-auth/react'
 import BackButton from '@/components/back-button'
-import { User, BookOpen, Heart, ArrowLeftRight, LogOut } from 'lucide-react'
+import { User, BookOpen, Heart, ArrowLeftRight, LogOut, Trash2, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface Book {
   id: string
@@ -52,9 +53,11 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [books, setBooks] = useState<Book[]>([])
+  const [deletedBooks, setDeletedBooks] = useState<Book[]>([])
   const [wishlist, setWishlist] = useState<WishlistItem[]>([])
   const [exchanges, setExchanges] = useState<Exchange[]>([])
-  const [activeTab, setActiveTab] = useState<'overview' | 'books' | 'wishlist'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'books' | 'deleted' | 'wishlist'>('overview')
+  const [togglingDelete, setTogglingDelete] = useState<string | null>(null)
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -67,14 +70,19 @@ export default function ProfilePage() {
     setError('')
 
     try {
-      const [booksResult, wishlistResult, exchangesResult] = await Promise.all([
+      const [booksResult, deletedBooksResult, wishlistResult, exchangesResult] = await Promise.all([
         getUserBooksAction(),
+        getUserDeletedBooksAction(),
         getUserWishlistAction(),
         getUserExchangesAction(),
       ])
 
       if (booksResult.success) {
         setBooks(booksResult.books || [])
+      }
+
+      if (deletedBooksResult.success) {
+        setDeletedBooks(deletedBooksResult.books || [])
       }
 
       if (wishlistResult.success) {
@@ -90,6 +98,23 @@ export default function ProfilePage() {
       setLoading(false)
     }
   }, [])
+
+  const handleToggleDelete = async (bookId: string, isDeleted: boolean) => {
+    setTogglingDelete(bookId)
+    try {
+      const result = await toggleBookDeleteAction(bookId, isDeleted)
+      if (result.success) {
+        toast.success(isDeleted ? 'Book deleted' : 'Book restored')
+        await loadData() // Reload data
+      } else {
+        toast.error(result.error || 'Failed to toggle delete status')
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to toggle delete status')
+    } finally {
+      setTogglingDelete(null)
+    }
+  }
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -205,6 +230,16 @@ export default function ProfilePage() {
               My Books ({books.length})
             </button>
             <button
+              onClick={() => setActiveTab('deleted')}
+              className={`pb-4 px-2 font-semibold transition-colors ${
+                activeTab === 'deleted'
+                  ? 'text-orange-500 border-b-2 border-orange-500'
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              Deleted ({deletedBooks.length})
+            </button>
+            <button
               onClick={() => setActiveTab('wishlist')}
               className={`pb-4 px-2 font-semibold transition-colors ${
                 activeTab === 'wishlist'
@@ -309,39 +344,115 @@ export default function ProfilePage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {books.map((book) => (
-                  <Link
+                  <div
                     key={book.id}
-                    href={`/book/${book.id}`}
-                    className="bg-white border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] overflow-hidden hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow"
+                    className="bg-white border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] overflow-hidden hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow flex flex-col"
                   >
-                    {book.images && book.images.length > 0 && (
-                      <div className="aspect-[3/4] bg-gray-100">
-                        <img
-                          src={book.images[0]}
-                          alt={book.title}
-                          className="w-full h-full object-cover"
-                        />
+                    <Link href={`/book/${book.id}`} className="flex-1">
+                      {book.images && book.images.length > 0 && (
+                        <div className="aspect-[3/4] bg-gray-100">
+                          <img
+                            src={book.images[0]}
+                            alt={book.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <h3 className="text-lg font-urbanist font-bold text-zinc-900 mb-1 line-clamp-1">
+                          {book.title}
+                        </h3>
+                        <p className="text-sm text-zinc-600 mb-2">by {book.author}</p>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs px-2 py-1 rounded-md ${
+                            book.isAvailable
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {book.isAvailable ? 'Available' : 'Unavailable'}
+                          </span>
+                          <span className="text-xs text-zinc-500">
+                            ❤️ {book._count.wishlistItems}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                    <div className="p-4">
-                      <h3 className="text-lg font-urbanist font-bold text-zinc-900 mb-1 line-clamp-1">
-                        {book.title}
-                      </h3>
-                      <p className="text-sm text-zinc-600 mb-2">by {book.author}</p>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs px-2 py-1 rounded-md ${
-                          book.isAvailable
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {book.isAvailable ? 'Available' : 'Unavailable'}
-                        </span>
-                        <span className="text-xs text-zinc-500">
-                          ❤️ {book._count.wishlistItems}
-                        </span>
+                    </Link>
+                    <div className="p-4 pt-0 border-t border-gray-100">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleToggleDelete(book.id, true)
+                        }}
+                        disabled={togglingDelete === book.id}
+                        className="w-full px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {togglingDelete === book.id ? 'Deleting...' : 'Delete Book'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'deleted' && (
+          <div>
+            {deletedBooks.length === 0 ? (
+              <div className="bg-white/50 backdrop-blur border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] p-12 text-center">
+                <Trash2 className="w-12 h-12 text-zinc-400 mx-auto mb-4" />
+                <p className="text-zinc-600 mb-4">No deleted books. Deleted books will appear here.</p>
+                <p className="text-sm text-zinc-500">
+                  You can restore deleted books at any time. History and data are preserved.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {deletedBooks.map((book) => (
+                  <div
+                    key={book.id}
+                    className="bg-white border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] overflow-hidden hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow flex flex-col opacity-75"
+                  >
+                    <div className="flex-1">
+                      {book.images && book.images.length > 0 && (
+                        <div className="aspect-[3/4] bg-gray-100">
+                          <img
+                            src={book.images[0]}
+                            alt={book.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <h3 className="text-lg font-urbanist font-bold text-zinc-900 mb-1 line-clamp-1">
+                          {book.title}
+                        </h3>
+                        <p className="text-sm text-zinc-600 mb-2">by {book.author}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs px-2 py-1 rounded-md bg-gray-100 text-gray-700">
+                            Deleted
+                          </span>
+                          <span className="text-xs text-zinc-500">
+                            ❤️ {book._count.wishlistItems}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </Link>
+                    <div className="p-4 pt-0 border-t border-gray-100">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleToggleDelete(book.id, false)
+                        }}
+                        disabled={togglingDelete === book.id}
+                        className="w-full px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        {togglingDelete === book.id ? 'Restoring...' : 'Restore Book'}
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}

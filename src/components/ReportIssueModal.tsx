@@ -20,6 +20,7 @@
 
 import { useState, useEffect } from 'react'
 import { createReportAction } from '@/app/actions/reports'
+import { toast } from 'sonner'
 
 type ReportReason =
   | 'CONDITION_MISMATCH'
@@ -103,6 +104,7 @@ export default function ReportIssueModal({
 
       // Success
       setSuccess(true)
+      toast.success('Report submitted successfully!')
 
       // Close modal after a short delay
       setTimeout(() => {
@@ -112,7 +114,9 @@ export default function ReportIssueModal({
         }
       }, 1500)
     } catch (err: any) {
-      setError(err.message || 'Failed to create report. Please try again.')
+      const errorMessage = err.message || 'Failed to create report. Please try again.'
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }

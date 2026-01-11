@@ -5,6 +5,7 @@ import Navbar from "@/components/navbar";
 import LenisScroll from "@/components/lenis";
 import FooterWrapper from "@/components/footer-wrapper";
 import { Providers } from "@/components/providers";
+import { Toaster } from "sonner";
 
 const inter = Inter({
     variable: "--font-sans",
@@ -66,6 +67,7 @@ export default function RootLayout({
                     <Navbar />
                     {children}
                     <FooterWrapper />
+                    <Toaster position="top-right" richColors />
                 </Providers>
             </body>
         </html>

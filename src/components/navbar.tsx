@@ -39,9 +39,14 @@ export default function Navbar() {
                                         Buy Points
                                     </Link>
                                     {user?.isAdmin && (
-                                        <Link href="/admin/reports" className="py-1 px-3 hover:text-zinc-500 text-orange-600 font-semibold">
-                                            Admin
-                                        </Link>
+                                        <>
+                                            <Link href="/admin/reports" className="py-1 px-3 hover:text-zinc-500 text-orange-600 font-semibold">
+                                                Reports
+                                            </Link>
+                                            <Link href="/admin/exchange-points" className="py-1 px-3 hover:text-zinc-500 text-orange-600 font-semibold">
+                                                Exchange Points
+                                            </Link>
+                                        </>
                                     )}
                                 </>
                             )}
@@ -97,9 +102,14 @@ export default function Navbar() {
                                 Buy Points
                             </Link>
                             {user?.isAdmin && (
-                                <Link href="/admin/reports" className="py-1 px-3 text-orange-600 font-semibold" onClick={() => setIsMenuOpen(false)}>
-                                    Admin
-                                </Link>
+                                <>
+                                    <Link href="/admin/reports" className="py-1 px-3 text-orange-600 font-semibold" onClick={() => setIsMenuOpen(false)}>
+                                        Reports
+                                    </Link>
+                                    <Link href="/admin/exchange-points" className="py-1 px-3 text-orange-600 font-semibold" onClick={() => setIsMenuOpen(false)}>
+                                        Exchange Points
+                                    </Link>
+                                </>
                             )}
                         </>
                     )}

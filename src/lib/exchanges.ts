@@ -276,12 +276,14 @@ export async function requestExchange(bookId: string) {
  * 2. Awards points to owner
  * 3. Transfers book ownership
  * 4. Updates exchange status
+ * 5. Stores exchange point location (if provided)
  * 
  * All of this happens in a single transaction to ensure consistency.
  * 
  * @param exchangeId - Exchange UUID
+ * @param exchangePointId - Optional exchange point ID where exchange takes place
  */
-export async function approveExchange(exchangeId: string) {
+export async function approveExchange(exchangeId: string, exchangePointId?: string) {
   const owner = await requireAuth()
 
   // Get exchange with book and user information
@@ -370,12 +372,13 @@ export async function approveExchange(exchangeId: string) {
       },
     })
 
-    // 4. Mark exchange as COMPLETED
+    // 4. Mark exchange as COMPLETED and store location
     const updatedExchange = await tx.exchange.update({
       where: { id: exchangeId },
       data: {
         status: 'COMPLETED',
         completedAt: new Date(),
+        exchangePointId: exchangePointId || null, // Store exchange point if provided
       },
       include: {
         book: {

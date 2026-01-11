@@ -20,6 +20,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { toast } from 'sonner'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -127,7 +128,9 @@ export default function AskBookModal({
 
       setMessages((prev) => [...prev, assistantMessage])
     } catch (err: any) {
-      setError(err.message || 'Failed to get AI response. Please try again.')
+      const errorMessage = err.message || 'Failed to get AI response. Please try again.'
+      setError(errorMessage)
+      toast.error(errorMessage)
       // Remove user message on error
       setMessages((prev) => prev.slice(0, -1))
     } finally {

@@ -38,10 +38,7 @@ export async function GET(
     }
 
     // Fallback to default production domain (for Vercel)
-    if (!baseUrl && process.env.NODE_ENV === 'production') {
-      baseUrl = 'https://readloom-p2301r21t-abdullahs-projects-5cd1a703.vercel.app'
-    }
-
+   
     // Fallback to origin header (for development only)
     if (!baseUrl) {
       baseUrl = request.headers.get('origin') || ''

@@ -34,6 +34,7 @@ export async function addBook(bookData: {
   condition: BookCondition
   images?: string[]
   location: string
+  chapters: string[]
 }) {
   // Require authentication - only logged-in users can add books
   const user = await requireAuth()
@@ -46,6 +47,20 @@ export async function addBook(bookData: {
   // Validate title and author are not just whitespace
   if (bookData.title.trim().length === 0 || bookData.author.trim().length === 0) {
     throw new Error('Title and author cannot be empty')
+  }
+
+  // Validate chapters - minimum 3 required
+  if (!bookData.chapters || bookData.chapters.length < 3) {
+    throw new Error('At least 3 chapters are required')
+  }
+
+  // Filter out empty chapters
+  const validChapters = bookData.chapters
+    .map(ch => ch.trim())
+    .filter(ch => ch.length > 0)
+
+  if (validChapters.length < 3) {
+    throw new Error('At least 3 non-empty chapters are required')
   }
 
   // CRITICAL: Verify user exists in database before creating book
@@ -72,6 +87,7 @@ export async function addBook(bookData: {
         condition: bookData.condition,
         images: bookData.images || [],
         location: bookData.location.trim(),
+        chapters: validChapters, // Store validated chapters
         currentOwnerId: user.id, // Ownership assigned immediately
         isAvailable: true, // New books are available by default
       },
@@ -149,6 +165,9 @@ export async function getBooks(options?: {
   offset?: number
 }) {
   const where: any = {}
+
+  // Always exclude deleted books from public listings
+  where.isDeleted = false
 
   // Filter by availability
   if (options?.availableOnly !== false) {
@@ -241,6 +260,14 @@ export async function getBookById(bookId: string) {
       throw new Error('Book not found')
     }
 
+    // Check if book is deleted - only owner can view deleted books
+    if (book.isDeleted) {
+      const user = await requireAuth().catch(() => null)
+      if (!user || book.currentOwnerId !== user.id) {
+        throw new Error('Book not found')
+      }
+    }
+
     // Return book with computedPoints (may be null if not yet calculated)
     // Using include instead of select to avoid field errors during migration
     return book
@@ -286,9 +313,10 @@ export async function getBookById(bookId: string) {
  * Get books owned by a specific user
  * 
  * @param userId - User ID (optional, defaults to current user)
+ * @param includeDeleted - Whether to include deleted books (default: false)
  * @returns List of books owned by the user
  */
-export async function getUserBooks(userId?: string) {
+export async function getUserBooks(userId?: string, includeDeleted: boolean = false) {
   const user = await requireAuth()
   const targetUserId = userId || user.id
 
@@ -300,6 +328,7 @@ export async function getUserBooks(userId?: string) {
   const books = await prisma.book.findMany({
     where: {
       currentOwnerId: targetUserId,
+      ...(includeDeleted ? {} : { isDeleted: false }), // Exclude deleted books unless explicitly requested
     },
     include: {
       _count: {
@@ -314,6 +343,102 @@ export async function getUserBooks(userId?: string) {
   })
 
   return books
+}
+
+/**
+ * Get deleted books owned by a specific user
+ * 
+ * @param userId - User ID (optional, defaults to current user)
+ * @returns List of deleted books owned by the user
+ */
+export async function getUserDeletedBooks(userId?: string) {
+  const user = await requireAuth()
+  const targetUserId = userId || user.id
+
+  // Only allow users to see their own books
+  if (targetUserId !== user.id) {
+    throw new Error('Unauthorized: You can only view your own books')
+  }
+
+  const books = await prisma.book.findMany({
+    where: {
+      currentOwnerId: targetUserId,
+      isDeleted: true,
+    },
+    include: {
+      _count: {
+        select: {
+          wishlistItems: true,
+        },
+      },
+    },
+    orderBy: {
+      updatedAt: 'desc', // Order by when it was deleted (updatedAt changes on soft delete)
+    },
+  })
+
+  return books
+}
+
+/**
+ * Toggle soft delete status of a book
+ * 
+ * CRITICAL: Only the current owner can toggle delete status
+ * This is a soft delete - no data is removed, only isDeleted flag is toggled
+ * 
+ * @param bookId - Book UUID
+ * @param isDeleted - New delete status (optional, toggles if not provided)
+ * @returns Updated book
+ */
+export async function toggleBookDelete(bookId: string, isDeleted?: boolean) {
+  const user = await requireAuth()
+
+  // Get the book to verify ownership
+  const book = await prisma.book.findUnique({
+    where: { id: bookId },
+    select: {
+      currentOwnerId: true,
+      isDeleted: true,
+    },
+  })
+
+  if (!book) {
+    throw new Error('Book not found')
+  }
+
+  // Only the owner can toggle delete status
+  if (book.currentOwnerId !== user.id) {
+    throw new Error('Unauthorized: Only the book owner can delete/restore books')
+  }
+
+  // Toggle if status not provided, otherwise use provided value
+  const newDeleteStatus = isDeleted !== undefined ? isDeleted : !book.isDeleted
+
+  // Update the book
+  const updatedBook = await prisma.book.update({
+    where: { id: bookId },
+    data: {
+      isDeleted: newDeleteStatus,
+      // Also set isAvailable to false when deleting, restore it when undeleting
+      isAvailable: newDeleteStatus ? false : book.isAvailable ?? true,
+    },
+    include: {
+      currentOwner: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      _count: {
+        select: {
+          wishlistItems: true,
+        },
+      },
+    },
+  })
+
+  return updatedBook
 }
 
 /**

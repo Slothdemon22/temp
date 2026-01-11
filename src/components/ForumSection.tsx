@@ -19,6 +19,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
+import EmojiPickerButton from '@/components/EmojiPicker'
+import { toast } from 'sonner'
 
 interface ForumUser {
   id: string
@@ -257,14 +259,23 @@ export default function ForumSection({ bookId }: ForumSectionProps) {
               Create New Post
             </h3>
             <form onSubmit={handleCreatePost} className="space-y-3">
-              <textarea
-                value={postContent}
-                onChange={(e) => setPostContent(e.target.value)}
-                placeholder="Share your thoughts, ask questions, or provide reading guidance..."
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
-                rows={5}
-                required
-              />
+              <div className="relative">
+                <textarea
+                  value={postContent}
+                  onChange={(e) => setPostContent(e.target.value)}
+                  placeholder="Share your thoughts, ask questions, or provide reading guidance..."
+                  className="w-full p-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                  rows={5}
+                  required
+                />
+                <div className="absolute bottom-3 right-3">
+                  <EmojiPickerButton
+                    onEmojiClick={(emoji) => {
+                      setPostContent(postContent + emoji)
+                    }}
+                  />
+                </div>
+              </div>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -362,14 +373,23 @@ export default function ForumSection({ bookId }: ForumSectionProps) {
                       onSubmit={(e) => handleCreateReply(post.id, e)}
                       className="space-y-2"
                     >
-                      <textarea
-                        value={replyContent}
-                        onChange={(e) => setReplyContent(e.target.value)}
-                        placeholder="Write a reply..."
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
-                        rows={3}
-                        required
-                      />
+                      <div className="relative">
+                        <textarea
+                          value={replyContent}
+                          onChange={(e) => setReplyContent(e.target.value)}
+                          placeholder="Write a reply..."
+                          className="w-full p-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                          rows={3}
+                          required
+                        />
+                        <div className="absolute bottom-2 right-2">
+                          <EmojiPickerButton
+                            onEmojiClick={(emoji) => {
+                              setReplyContent(replyContent + emoji)
+                            }}
+                          />
+                        </div>
+                      </div>
                       <div className="flex items-center gap-3">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input

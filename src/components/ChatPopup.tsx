@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { toast } from 'sonner'
 
 interface Room {
   id: number
@@ -101,11 +102,11 @@ export default function ChatPopup({ room, userName, onClose }: ChatPopupProps) {
         setNewMessage('')
       } else {
         const data = await response.json()
-        alert(data.error || 'Failed to send message')
+        toast.error(data.error || 'Failed to send message')
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      alert('Failed to send message')
+      toast.error('Failed to send message')
     } finally {
       setSending(false)
     }

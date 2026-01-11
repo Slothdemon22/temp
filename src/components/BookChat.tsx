@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { toast } from 'sonner'
 
 interface Message {
   id: number
@@ -135,11 +136,11 @@ export default function BookChat({ bookId }: BookChatProps) {
       } else {
         const data = await response.json()
         console.error('Failed to send message:', data.error)
-        alert(data.error || 'Failed to send message')
+        toast.error(data.error || 'Failed to send message')
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      alert('Failed to send message')
+      toast.error('Failed to send message')
     } finally {
       setSending(false)
     }

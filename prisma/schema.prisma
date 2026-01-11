@@ -129,6 +129,9 @@ model Book {
   author      String // Author name (required)
   description String? @db.Text // Optional description
 
+  // Chapters - Minimum 3 required, more can be added
+  chapters    String[] // Array of chapter titles/names (minimum 3 required)
+
   // Condition & Value Signals
   condition BookCondition @default(GOOD) // Physical condition of the book
   images    String[] // Array of image URLs (optional, but supported)
@@ -147,6 +150,7 @@ model Book {
   currentOwner   User   @relation("BookOwner", fields: [currentOwnerId], references: [id], onDelete: Restrict)
 
   isAvailable Boolean  @default(true) // Whether book is available for exchange
+  isDeleted   Boolean  @default(false) // Soft delete flag - marks book as deleted without removing data
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -160,6 +164,7 @@ model Book {
   // Indexes for performance
   @@index([currentOwnerId]) // Fast lookup of user's books
   @@index([isAvailable]) // Fast filtering of available books
+  @@index([isDeleted]) // Fast filtering of deleted books
   @@index([title]) // Fast search by title
   @@index([author]) // Fast search by author
   @@index([location]) // Fast filtering by location
@@ -204,6 +209,48 @@ enum ExchangeStatus {
   DISPUTED // Exchange is under dispute (points frozen)
 }
 
+// Exchange Point Model - Physical Exchange Locations (Stalls)
+//
+// Purpose:
+// - Stores physical locations where book exchanges can take place
+// - Allows users to select a convenient exchange point
+// - Enables location-based exchange tracking
+//
+// Design:
+// - Each exchange point has a name, address, and coordinates
+// - Coordinates stored as latitude/longitude for map integration
+// - Active flag allows disabling exchange points without deletion
+model ExchangePoint {
+  id String @id @default(uuid())
+
+  // Basic Information
+  name        String  // Name of the exchange point (e.g., "Central Library Stall")
+  description String? @db.Text // Optional description
+  address     String  // Full address
+  city        String  // City name
+  country     String  @default("Pakistan") // Country (default for hackathon)
+
+  // Location Coordinates (for map integration)
+  latitude  Float // Latitude coordinate
+  longitude Float // Longitude coordinate
+
+  // Status
+  isActive Boolean @default(true) // Whether this exchange point is active
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  exchanges Exchange[] // Exchanges that took place at this location
+
+  // Indexes for performance
+  @@index([isActive]) // Fast filtering of active exchange points
+  @@index([city]) // Fast filtering by city
+  @@index([latitude, longitude]) // For location-based queries
+  @@map("exchange_points")
+}
+
 // Exchange Model - Point-Based Book Exchange System
 //
 // CRITICAL DESIGN PRINCIPLES:
@@ -218,6 +265,9 @@ enum ExchangeStatus {
 //
 // 4. Atomic Operations: All critical updates (points, ownership) happen in transactions
 //    This ensures data consistency and prevents race conditions
+//
+// 5. Location Tracking: Exchange point is stored when exchange is completed
+//    This enables physical location tracking for exchanges
 //
 // Anti-Abuse Features:
 // - Prevents repeat exchanges between same users (within time window)
@@ -241,6 +291,10 @@ model Exchange {
   pointsUsed Int // Points deducted from requester (equal to book value)
   status     ExchangeStatus @default(REQUESTED) // Current status of exchange
 
+  // Location Information (optional - set when exchange is completed)
+  exchangePointId String? // Exchange point where the exchange took place
+  exchangePoint   ExchangePoint? @relation(fields: [exchangePointId], references: [id], onDelete: SetNull)
+
   // Timestamps
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -254,6 +308,7 @@ model Exchange {
   @@index([fromUserId]) // Fast lookup of exchanges sent by user
   @@index([toUserId]) // Fast lookup of exchanges received by user
   @@index([status]) // Fast filtering by status
+  @@index([exchangePointId]) // Fast lookup of exchanges by location
   @@index([fromUserId, toUserId, createdAt]) // For detecting repeat exchanges
   @@map("exchanges")
 }
