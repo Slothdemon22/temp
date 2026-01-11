@@ -278,50 +278,67 @@ export default function BookDetailPage() {
   const handleDelete = async () => {
     if (!book) return
 
-    if (!confirm('Are you sure you want to delete this book? This action cannot be undone.')) {
-      return
-    }
-
-    setDeleting(true)
-    try {
-      await deleteBookAction(book.id)
-      toast.success('Book deleted successfully')
-      router.push('/books')
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to delete book'
-      setError(errorMessage)
-      toast.error(errorMessage)
-      setDeleting(false)
-    }
+    // Show confirmation using Sonner toast
+    toast(
+      'Are you sure you want to delete this book? This action cannot be undone.',
+      {
+        duration: 5000,
+        action: {
+          label: 'Delete',
+          onClick: async () => {
+            toast.promise(
+              deleteBookAction(book.id).then(() => {
+                router.push('/books')
+              }),
+              {
+                loading: 'Deleting book...',
+                success: 'Book deleted successfully',
+                error: (err) => err.message || 'Failed to delete book',
+              }
+            )
+          },
+        },
+      }
+    )
   }
 
   const handleRequestExchange = async () => {
     if (!book) return
 
-    if (!confirm(`Request this book for ${requiredPoints} points? Points will be deducted when the owner approves.`)) {
-      return
-    }
+    // Show confirmation using Sonner toast
+    toast(
+      `Request this book for ${requiredPoints} points? Points will be deducted when the owner approves.`,
+      {
+        duration: 5000,
+        action: {
+          label: 'Confirm',
+          onClick: async () => {
+            setRequestingExchange(true)
+            setError('')
+            
+            toast.promise(
+              requestExchangeAction(book.id).then(async (result) => {
+                if (!result.success) {
+                  setError(result.error || 'Failed to request exchange')
+                  setRequestingExchange(false)
+                  throw new Error(result.error || 'Failed to request exchange')
+                }
 
-    setRequestingExchange(true)
-    setError('')
-
-    try {
-      const result = await requestExchangeAction(book.id)
-
-      if (!result.success) {
-        setError(result.error || 'Failed to request exchange')
-        setRequestingExchange(false)
-        return
+                // Success - reload book to show updated status
+                await loadBook()
+                setRequestingExchange(false)
+                return result
+              }),
+              {
+                loading: 'Sending exchange request...',
+                success: 'Exchange request sent! The owner will be notified.',
+                error: (err) => err.message || 'Failed to request exchange',
+              }
+            )
+          },
+        },
       }
-
-      // Success - reload book to show updated status
-      await loadBook()
-      toast.success('Exchange request sent! The owner will be notified.')
-    } catch (err: any) {
-      setError(err.message || 'Failed to request exchange')
-    } finally {
-      setRequestingExchange(false)
-    }
+    )
   }
 
   if (loading) {

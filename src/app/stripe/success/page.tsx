@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { addPointsAfterPayment } from '@/app/actions/points'
 import { useSession } from 'next-auth/react'
@@ -16,14 +16,48 @@ function StripeSuccessContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [newPoints, setNewPoints] = useState<number | null>(null)
+  const processingRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const processPayment = async () => {
-      if (!sessionId) {
-        setLoading(false)
-        return
-      }
+    // Early return if no session ID
+    if (!sessionId) {
+      setLoading(false)
+      return
+    }
 
+    // CRITICAL: Check localStorage FIRST (synchronously) before any processing
+    const processedSessions = JSON.parse(localStorage.getItem('processed_stripe_sessions') || '[]')
+    if (processedSessions.includes(sessionId)) {
+      console.log('Session already processed, fetching current points...')
+      setLoading(false)
+      // Fetch current points to show
+      const fetchCurrentPoints = async () => {
+        try {
+          const response = await fetch('/api/auth/me')
+          const data = await response.json()
+          if (data.user?.points !== undefined) {
+            setNewPoints(data.user.points)
+          }
+        } catch {
+          // Ignore
+        }
+      }
+      fetchCurrentPoints()
+      return
+    }
+
+    // Prevent duplicate processing - check ref
+    if (processingRef.current === sessionId) {
+      return
+    }
+
+    // Mark as processing immediately (synchronously, before any async operations)
+    processingRef.current = sessionId
+    // Mark in localStorage IMMEDIATELY before making API call
+    processedSessions.push(sessionId)
+    localStorage.setItem('processed_stripe_sessions', JSON.stringify(processedSessions))
+
+    const processPayment = async () => {
       // If this is a points purchase, add points to account
       if (points && sessionId) {
         try {
@@ -34,24 +68,33 @@ function StripeSuccessContent() {
             // Refresh the session to get updated points
             try {
               await updateSession()
-              // Force a router refresh to update all components
               router.refresh()
             } catch (sessionError) {
               console.warn('Failed to refresh session (non-critical):', sessionError)
-              // Still show success - points are in database
             }
           }
         } catch (err: any) {
           console.error('Error processing points:', err)
           setError(err.message || 'Failed to add points. Please contact support.')
+          // Remove from processed list if it failed (allow retry)
+          const updatedSessions = JSON.parse(localStorage.getItem('processed_stripe_sessions') || '[]')
+          const filtered = updatedSessions.filter((id: string) => id !== sessionId)
+          localStorage.setItem('processed_stripe_sessions', JSON.stringify(filtered))
+          processingRef.current = null
         }
+      } else {
+        setLoading(false)
       }
 
-      setLoading(false)
+      if (points && sessionId) {
+        // Loading already handled in try/catch
+      } else {
+        setLoading(false)
+      }
     }
 
     processPayment()
-  }, [sessionId, points, updateSession, router])
+  }, [sessionId, points]) // Only depend on sessionId and points to prevent re-runs
 
   if (loading) {
     return (

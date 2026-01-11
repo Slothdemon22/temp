@@ -59,9 +59,8 @@ export default function ProfilePage() {
   const [exchanges, setExchanges] = useState<Exchange[]>([])
   const [activeTab, setActiveTab] = useState<'overview' | 'books' | 'deleted' | 'wishlist'>('overview')
   const [togglingDelete, setTogglingDelete] = useState<string | null>(null)
-  
-  // Get current points from session (will be updated when session refreshes)
-  const currentPoints = session?.user?.points ?? user?.points ?? 0
+  // Fetch fresh points from API instead of relying on session
+  const [freshPoints, setFreshPoints] = useState<number | null>(null)
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -120,28 +119,47 @@ export default function ProfilePage() {
     }
   }
 
+  // Fetch fresh points function
+  const fetchPoints = useCallback(async () => {
+    if (!isAuthenticated) return
+    
+    try {
+      const response = await fetch('/api/auth/me')
+      const data = await response.json()
+      if (data.user?.points !== undefined) {
+        setFreshPoints(data.user.points)
+      }
+    } catch (error) {
+      // Silently fail - use session points as fallback
+    }
+  }, [isAuthenticated])
+
   useEffect(() => {
     if (isAuthenticated) {
       loadData()
-      // Refresh session to get latest points
-      updateSession().catch(() => {
-        // Silently fail - session will update on next page load
-      })
+      fetchPoints()
     }
-  }, [isAuthenticated, loadData, updateSession])
+  }, [isAuthenticated, loadData, fetchPoints])
   
-  // Refresh session periodically to keep points updated
+  // Refresh points when page becomes visible (user comes back from Stripe)
   useEffect(() => {
     if (!isAuthenticated) return
     
-    const interval = setInterval(() => {
-      updateSession().catch(() => {
-        // Silently fail
-      })
-    }, 30000) // Refresh every 30 seconds
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchPoints()
+      }
+    }
     
-    return () => clearInterval(interval)
-  }, [isAuthenticated, updateSession])
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [isAuthenticated, fetchPoints])
+  
+  // Get current points - prefer fresh points from API, fallback to session
+  const currentPoints = freshPoints !== null ? freshPoints : (session?.user?.points ?? user?.points ?? 0)
 
   const handleSignOut = async () => {
     await signOut({ redirect: true, callbackUrl: '/' })

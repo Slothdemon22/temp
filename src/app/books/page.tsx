@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { getBooksAction } from '@/app/actions/books'
 import { addToWishlistAction, removeFromWishlistAction, isInWishlistAction } from '@/app/actions/wishlist'
 import type { BookCondition } from '@/lib/books'
+import { toast } from 'sonner'
 
 const BOOK_CONDITIONS: { value: BookCondition; label: string }[] = [
   { value: 'POOR', label: 'Poor' },
@@ -129,17 +130,34 @@ export default function BooksPage() {
     }
 
     const isInWishlist = wishlistStatus[bookId]
+    const book = books.find(b => b.id === bookId)
 
     try {
       if (isInWishlist) {
-        await removeFromWishlistAction(bookId)
+        toast.promise(
+          removeFromWishlistAction(bookId),
+          {
+            loading: 'Removing from wishlist...',
+            success: `${book?.title || 'Book'} removed from wishlist`,
+            error: 'Failed to remove from wishlist',
+          }
+        )
         setWishlistStatus({ ...wishlistStatus, [bookId]: false })
       } else {
-        await addToWishlistAction(bookId)
+        toast.promise(
+          addToWishlistAction(bookId),
+          {
+            loading: 'Adding to wishlist...',
+            success: `${book?.title || 'Book'} added to wishlist! ❤️`,
+            error: 'Failed to add to wishlist',
+          }
+        )
         setWishlistStatus({ ...wishlistStatus, [bookId]: true })
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to update wishlist')
+      const errorMessage = err.message || 'Failed to update wishlist'
+      setError(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -299,42 +317,81 @@ export default function BooksPage() {
         {/* Featured/Popular Books Section */}
         {!loading && books.length > 0 && books.some(b => b._count.wishlistItems > 0) && (
           <div className="mb-12">
-            <h3 className="text-2xl font-urbanist font-bold text-zinc-900 mb-6">
-              Popular Books
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-3xl font-urbanist font-bold text-zinc-900 mb-2">
+                  🔥 Popular Books
+                </h3>
+                <p className="text-zinc-500">
+                  Most wishlisted books in our community
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-5 md:gap-6">
               {books
                 .filter(b => b._count.wishlistItems > 0)
                 .sort((a, b) => b._count.wishlistItems - a._count.wishlistItems)
-                .slice(0, 4)
-                .map((book) => (
+                .slice(0, 8)
+                .map((book, index) => (
                   <Link
                     key={book.id}
                     href={`/book/${book.id}`}
-                    className="bg-white border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] overflow-hidden hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow flex flex-col"
+                    className="group bg-white border border-gray-200 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden hover:shadow-[0_12px_40px_rgba(0,0,0,0.15)] hover:-translate-y-1 transition-all duration-300 flex flex-col relative"
                   >
+                    {index === 0 && (
+                      <div className="absolute top-3 right-3 z-10 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
+                        <span>🔥</span>
+                        <span>#1</span>
+                      </div>
+                    )}
                     {book.images && book.images.length > 0 ? (
-                      <div className="aspect-[3/4] bg-gray-100 overflow-hidden">
+                      <div className="aspect-[3/4] bg-gray-100 overflow-hidden relative">
                         <img
                           src={book.images[0]}
                           alt={book.title}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {book.isAvailable && (
+                          <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-lg">
+                            Available
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <div className="aspect-[3/4] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                        <span className="text-4xl text-gray-400">📚</span>
+                      <div className="aspect-[3/4] bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center group-hover:from-orange-100 group-hover:to-orange-200 transition-colors relative">
+                        <span className="text-6xl text-orange-300 group-hover:scale-110 transition-transform">📚</span>
+                        {book.isAvailable && (
+                          <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-lg">
+                            Available
+                          </div>
+                        )}
                       </div>
                     )}
-                    <div className="p-4 flex flex-col flex-grow">
-                      <h4 className="text-sm font-urbanist font-bold text-zinc-900 mb-1 line-clamp-2 leading-tight">
+                    <div className="p-5 flex flex-col flex-grow">
+                      <h4 className="text-base font-urbanist font-bold text-zinc-900 mb-2 line-clamp-2 leading-tight group-hover:text-orange-600 transition-colors min-h-[3rem]">
                         {book.title}
                       </h4>
-                      <p className="text-xs text-zinc-500 mb-2 line-clamp-1">by {book.author}</p>
-                      <div className="mt-auto pt-2 border-t border-gray-100">
-                        <span className="text-xs text-orange-500 font-medium">
-                          ❤️ {book._count.wishlistItems} wishlist{book._count.wishlistItems !== 1 ? 's' : ''}
+                      <p className="text-sm text-zinc-500 mb-3 line-clamp-1">by {book.author}</p>
+                      <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        <span className="text-xs px-3 py-1 bg-orange-50 text-orange-600 rounded-lg font-medium">
+                          {BOOK_CONDITIONS.find((c) => c.value === book.condition)?.label || book.condition}
                         </span>
+                        <span className="text-xs text-zinc-400 flex items-center gap-1">
+                          <span>📍</span>
+                          <span className="truncate max-w-[100px]">{book.location.split(',')[0]}</span>
+                        </span>
+                      </div>
+                      <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-orange-500 text-base">❤️</span>
+                          <span className="text-sm font-semibold text-orange-600">
+                            {book._count.wishlistItems}
+                          </span>
+                          {book._count.wishlistItems > 0 && (
+                            <span className="text-xs text-zinc-400">wishlist{book._count.wishlistItems !== 1 ? 's' : ''}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </Link>
@@ -345,9 +402,19 @@ export default function BooksPage() {
 
         {/* All Books Section */}
         <div className="mb-6">
-          <h3 className="text-2xl font-urbanist font-bold text-zinc-900 mb-6">
-            All Books
-          </h3>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-3xl font-urbanist font-bold text-zinc-900 mb-2">
+                📚 All Books
+              </h3>
+              <p className="text-zinc-500">
+                Browse all available books for exchange
+              </p>
+            </div>
+            <div className="text-sm text-zinc-500">
+              {books.length} {books.length === 1 ? 'book' : 'books'} available
+            </div>
+          </div>
         </div>
 
         {/* Books Grid */}
@@ -379,55 +446,77 @@ export default function BooksPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
             {books.map((book) => (
               <div
                 key={book.id}
-                className="bg-white border border-gray-200 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.10)] overflow-hidden hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] transition-shadow flex flex-col"
+                className="group bg-white border border-gray-200 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden hover:shadow-[0_12px_40px_rgba(0,0,0,0.15)] hover:-translate-y-1 transition-all duration-300 flex flex-col"
               >
                 {book.images && book.images.length > 0 ? (
-                  <Link href={`/book/${book.id}`} className="block aspect-[3/4] bg-gray-100 overflow-hidden">
+                  <Link href={`/book/${book.id}`} className="block aspect-[3/4] bg-gray-100 overflow-hidden relative">
                     <img
                       src={book.images[0]}
                       alt={book.title}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {book.isAvailable && (
+                      <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-lg">
+                        Available
+                      </div>
+                    )}
                   </Link>
                 ) : (
-                  <Link href={`/book/${book.id}`} className="block aspect-[3/4] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                    <span className="text-4xl text-gray-400">📚</span>
+                  <Link href={`/book/${book.id}`} className="block aspect-[3/4] bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center group-hover:from-orange-100 group-hover:to-orange-200 transition-colors relative">
+                    <span className="text-5xl text-orange-300 group-hover:scale-110 transition-transform">📚</span>
+                    {book.isAvailable && (
+                      <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-lg">
+                        Available
+                      </div>
+                    )}
                   </Link>
                 )}
                 <div className="p-4 flex flex-col flex-grow">
                   <Link href={`/book/${book.id}`} className="block mb-1">
-                    <h3 className="text-sm font-urbanist font-bold text-zinc-900 line-clamp-2 hover:text-orange-500 transition-colors leading-tight">
+                    <h3 className="text-sm font-urbanist font-bold text-zinc-900 line-clamp-2 hover:text-orange-600 transition-colors leading-tight mb-1">
                       {book.title}
                     </h3>
                   </Link>
-                  <p className="text-xs text-zinc-600 mb-2 line-clamp-1">
+                  <p className="text-xs text-zinc-500 mb-3 line-clamp-1">
                     by {book.author}
                   </p>
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-md whitespace-nowrap">
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <span className="text-xs px-2 py-1 bg-orange-50 text-orange-600 rounded-md font-medium whitespace-nowrap">
                       {BOOK_CONDITIONS.find((c) => c.value === book.condition)
                         ?.label || book.condition}
                     </span>
-                    <span className="text-xs text-zinc-500 line-clamp-1">
-                      📍 {book.location}
+                    <span className="text-xs text-zinc-400 line-clamp-1 flex items-center gap-1">
+                      <span>📍</span>
+                      <span className="truncate max-w-[80px]">{book.location.split(',')[0]}</span>
                     </span>
                   </div>
-                  <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
-                    <span className="text-xs text-zinc-500">
-                      ❤️ {book._count.wishlistItems}
-                    </span>
+                  <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-orange-500 text-sm">❤️</span>
+                      <span className="text-xs font-semibold text-zinc-700">
+                        {book._count.wishlistItems}
+                      </span>
+                      {book._count.wishlistItems > 0 && (
+                        <span className="text-xs text-zinc-400">wishlist{book._count.wishlistItems !== 1 ? 's' : ''}</span>
+                      )}
+                    </div>
                     {isAuthenticated && (
                       <button
-                        onClick={() => handleWishlistToggle(book.id)}
-                        className={`text-xs px-2 py-1 rounded-full transition-colors ${
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleWishlistToggle(book.id)
+                        }}
+                        className={`text-sm px-2.5 py-1 rounded-lg transition-all ${
                           wishlistStatus[book.id]
                             ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-                            : 'bg-gray-100 text-zinc-700 hover:bg-gray-200'
+                            : 'bg-gray-100 text-zinc-600 hover:bg-gray-200'
                         }`}
+                        title={wishlistStatus[book.id] ? 'Remove from wishlist' : 'Add to wishlist'}
                       >
                         {wishlistStatus[book.id] ? '❤️' : '🤍'}
                       </button>
