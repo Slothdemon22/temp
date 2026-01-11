@@ -175,9 +175,23 @@ Rules:
 
     return points
   } catch (error: any) {
-    // If Gemini API fails, use fallback
-    // This ensures the system always produces a value
-    console.error('Gemini API failed, using fallback calculation:', error)
+    // If Gemini API fails (rate limit, quota, etc.), use fallback immediately
+    // This ensures the system always produces a value without retrying
+    // CRITICAL: Don't retry on rate limit errors - use fallback to avoid hitting limits
+    const errorMessage = error?.message || ''
+    const isRateLimit = 
+      errorMessage.includes('429') ||
+      errorMessage.includes('quota') ||
+      errorMessage.includes('rate limit') ||
+      errorMessage.includes('Too Many Requests')
+    
+    if (isRateLimit) {
+      console.warn('Gemini API rate limit hit, using fallback calculation to avoid further API calls')
+    } else {
+      console.error('Gemini API failed, using fallback calculation:', errorMessage)
+    }
+    
+    // Always return fallback - never retry to avoid hitting API limits
     return fallbackValue
   }
 }

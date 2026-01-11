@@ -108,24 +108,30 @@ export async function addBook(bookData: {
     })
 
     // Calculate and cache AI-based point value
-    // This happens asynchronously after book creation to avoid blocking
+    // This happens asynchronously in the background to avoid blocking book creation
     // The points will be available when the first exchange is requested
-    try {
-      const { getBookPoints } = await import('./book-points')
-      const { recalculateRarityForBooks } = await import('./book-points')
-      
-      // Calculate points for this book
-      await getBookPoints(book.id, true) // Force calculation for new book
-      
-      // Recalculate rarity for all books with same title+author
-      // This updates points for existing books when a new copy is added
-      await recalculateRarityForBooks(book.title, book.author)
-    } catch (error: any) {
-      // If AI valuation fails or fields don't exist yet, log but don't fail book creation
-      // This ensures books can still be created even if AI system isn't fully set up
-      console.warn('AI point calculation failed (non-critical):', error.message)
-      // Book is still created successfully, points can be calculated later
-    }
+    // CRITICAL: Don't await - let it run in background to avoid API rate limits blocking book creation
+    // Fire and forget - book creation succeeds immediately, points calculated in background
+    ;(async () => {
+      try {
+        const { getBookPoints } = await import('./book-points')
+        const { recalculateRarityForBooks } = await import('./book-points')
+        
+        // Calculate points for this book (only the new book - 1 API call)
+        await getBookPoints(book.id, true)
+        
+        // Recalculate rarity for existing books with same title+author
+        // OPTIMIZED: Excludes the newly created book to avoid duplicate API call
+        await recalculateRarityForBooks(book.title, book.author, book.id)
+      } catch (error: any) {
+        // If AI valuation fails, log but don't fail book creation
+        // Book is still created successfully, points can be calculated later
+        console.warn('AI point calculation failed (non-critical):', error.message)
+      }
+    })().catch((error) => {
+      // Catch any unhandled errors in the background task
+      console.error('Background point calculation error:', error)
+    })
 
     return book
   } catch (error: any) {

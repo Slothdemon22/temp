@@ -58,9 +58,24 @@ export async function getBookPoints(
 
   // Return cached points if available and not forcing recalculation
   // Handle case where computedPoints field might not exist yet (during migration)
+  // CRITICAL: Always check cache first to avoid unnecessary API calls
   const cachedPoints = (book as any).computedPoints
+  const lastCalculated = (book as any).pointsLastCalculatedAt
+  
   if (!forceRecalculate && cachedPoints !== null && cachedPoints !== undefined) {
-    return cachedPoints
+    // If points were calculated recently (within 24 hours), use cache
+    // This prevents excessive API calls for frequently accessed books
+    if (lastCalculated) {
+      const hoursSinceCalculation =
+        (Date.now() - new Date(lastCalculated).getTime()) / (1000 * 60 * 60)
+      if (hoursSinceCalculation < 24) {
+        return cachedPoints
+      }
+    } else {
+      // If we have cached points but no timestamp, still use them
+      // (backward compatibility during migration)
+      return cachedPoints
+    }
   }
 
   // Calculate rarity (number of books with same title + author)
@@ -226,19 +241,30 @@ async function shouldRecalculatePoints(bookId: string): Promise<boolean> {
  * 
  * Called when a new book is added, affecting rarity calculations.
  * 
+ * OPTIMIZED: Excludes the newly created book to avoid duplicate API calls.
+ * Only recalculates existing books that need their rarity updated.
+ * 
  * @param title - Book title
  * @param author - Book author
+ * @param excludeBookId - Book ID to exclude from recalculation (the newly created book)
  */
 export async function recalculateRarityForBooks(
   title: string,
-  author: string
+  author: string,
+  excludeBookId?: string
 ): Promise<void> {
-  // Find all books with same title+author
+  // Find all books with same title+author, excluding the newly created one
+  const whereClause: any = {
+    title,
+    author,
+  }
+  
+  if (excludeBookId) {
+    whereClause.id = { not: excludeBookId }
+  }
+
   const books = await prisma.book.findMany({
-    where: {
-      title,
-      author,
-    },
+    where: whereClause,
     include: {
       _count: {
         select: {
@@ -248,31 +274,60 @@ export async function recalculateRarityForBooks(
     },
   })
 
-  const rarityCount = books.length
+  // If no existing books to update, skip API calls
+  if (books.length === 0) {
+    return
+  }
 
-  // Recalculate points for each book
-  for (const book of books) {
-    const points = await calculateBookPoints(
-      book.condition,
-      book._count.wishlistItems,
-      rarityCount
-    )
+  // Calculate new rarity count (include the new book in count)
+  const rarityCount = books.length + (excludeBookId ? 1 : 0)
 
-    // Update cache (handle missing fields gracefully)
-    try {
-      await prisma.book.update({
-        where: { id: book.id },
-        data: {
-          computedPoints: points,
-          pointsLastCalculatedAt: new Date(),
-        },
+  // OPTIMIZATION: Only recalculate if rarity actually changed
+  // Check if any book has cached points that might be stale
+  // For efficiency, we'll recalculate all, but we could add more logic here
+
+  // Recalculate points for each existing book
+  // Use Promise.all with limited concurrency to avoid overwhelming the API
+  const BATCH_SIZE = 3 // Process 3 books at a time to avoid rate limits
+  for (let i = 0; i < books.length; i += BATCH_SIZE) {
+    const batch = books.slice(i, i + BATCH_SIZE)
+    
+    await Promise.all(
+      batch.map(async (book) => {
+        try {
+          const points = await calculateBookPoints(
+            book.condition,
+            book._count.wishlistItems,
+            rarityCount
+          )
+
+          // Update cache (handle missing fields gracefully)
+          try {
+            await prisma.book.update({
+              where: { id: book.id },
+              data: {
+                computedPoints: points,
+                pointsLastCalculatedAt: new Date(),
+              },
+            })
+          } catch (error: any) {
+            if (error.message?.includes('Unknown field')) {
+              console.warn('computedPoints field not available yet - migration may be needed')
+            } else {
+              throw error
+            }
+          }
+        } catch (error: any) {
+          // If API call fails for one book, log but continue with others
+          // This prevents one failure from blocking all recalculations
+          console.warn(`Failed to recalculate points for book ${book.id}:`, error.message)
+        }
       })
-    } catch (error: any) {
-      if (error.message?.includes('Unknown field')) {
-        console.warn('computedPoints field not available yet - migration may be needed')
-      } else {
-        throw error
-      }
+    )
+    
+    // Small delay between batches to avoid rate limits
+    if (i + BATCH_SIZE < books.length) {
+      await new Promise(resolve => setTimeout(resolve, 500)) // 500ms delay
     }
   }
 }

@@ -12,8 +12,8 @@
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { getUserBooksAction, getUserDeletedBooksAction, toggleBookDeleteAction } from '@/app/actions/books'
@@ -49,6 +49,7 @@ interface Exchange {
 
 export default function ProfilePage() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
   const { data: session, update: updateSession } = useSession()
   const [loading, setLoading] = useState(true)
@@ -61,6 +62,7 @@ export default function ProfilePage() {
   const [togglingDelete, setTogglingDelete] = useState<string | null>(null)
   // Fetch fresh points from API instead of relying on session
   const [freshPoints, setFreshPoints] = useState<number | null>(null)
+  const lastPathnameRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -119,42 +121,76 @@ export default function ProfilePage() {
     }
   }
 
-  // Fetch fresh points function
+  // Fetch fresh points function - always fetches from database
   const fetchPoints = useCallback(async () => {
     if (!isAuthenticated) return
     
     try {
-      const response = await fetch('/api/auth/me')
+      // Add timestamp to prevent caching
+      const response = await fetch(`/api/auth/me?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      })
       const data = await response.json()
       if (data.user?.points !== undefined) {
         setFreshPoints(data.user.points)
       }
     } catch (error) {
       // Silently fail - use session points as fallback
+      console.error('Error fetching points:', error)
     }
   }, [isAuthenticated])
 
+  // Always fetch fresh points when page loads or becomes visible
   useEffect(() => {
     if (isAuthenticated) {
       loadData()
-      fetchPoints()
+      fetchPoints() // Fetch points immediately when page loads
     }
   }, [isAuthenticated, loadData, fetchPoints])
   
-  // Refresh points when page becomes visible (user comes back from Stripe)
+  // Refresh points when route changes (user navigates to profile page)
+  // This ensures points are refreshed when navigating from other pages
+  useEffect(() => {
+    if (!isAuthenticated) return
+    
+    // Always fetch when pathname is /profile (handles both initial load and navigation)
+    if (pathname === '/profile') {
+      // Small delay to ensure navigation is complete
+      const timer = setTimeout(() => {
+        fetchPoints()
+      }, 100)
+      
+      lastPathnameRef.current = pathname
+      
+      return () => clearTimeout(timer)
+    }
+  }, [pathname, isAuthenticated, fetchPoints])
+  
+  // Refresh points when page becomes visible (user comes back from Stripe or other tabs)
   useEffect(() => {
     if (!isAuthenticated) return
     
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchPoints()
+        fetchPoints() // Always fetch fresh points when page becomes visible
       }
     }
     
+    // Also fetch on focus (when user clicks back to the tab)
+    const handleFocus = () => {
+      fetchPoints()
+    }
+    
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
     }
   }, [isAuthenticated, fetchPoints])
   

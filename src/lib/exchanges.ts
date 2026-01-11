@@ -393,6 +393,7 @@ export async function approveExchange(exchangeId: string, exchangePointId?: stri
           select: {
             id: true,
             name: true,
+            email: true,
             points: true,
           },
         },
@@ -400,7 +401,14 @@ export async function approveExchange(exchangeId: string, exchangePointId?: stri
           select: {
             id: true,
             name: true,
+            email: true,
             points: true,
+          },
+        },
+        exchangePoint: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },
@@ -416,6 +424,45 @@ export async function approveExchange(exchangeId: string, exchangePointId?: stri
 
     return updatedExchange
     })
+
+    // Send emails to both parties (non-blocking - don't fail exchange if emails fail)
+    try {
+      const { 
+        sendExchangeCompletionEmailToRecipient, 
+        sendExchangeCompletionEmailToOwner 
+      } = await import('@/lib/email')
+      
+      if (result.fromUser.email && result.toUser.email) {
+        // Send email to recipient (new owner)
+        sendExchangeCompletionEmailToRecipient(
+          result.toUser.email,
+          result.toUser.name,
+          result.book.title,
+          result.book.author || 'Unknown Author',
+          exchange.pointsUsed,
+          result.fromUser.name,
+          result.exchangePoint?.name || null
+        ).catch((err) => {
+          console.error('Failed to send email to recipient:', err)
+        })
+
+        // Send email to owner (previous owner)
+        sendExchangeCompletionEmailToOwner(
+          result.fromUser.email,
+          result.fromUser.name,
+          result.book.title,
+          result.book.author || 'Unknown Author',
+          exchange.pointsUsed,
+          result.toUser.name,
+          result.exchangePoint?.name || null
+        ).catch((err) => {
+          console.error('Failed to send email to owner:', err)
+        })
+      }
+    } catch (emailError) {
+      // Log error but don't fail exchange
+      console.error('Failed to send exchange completion emails:', emailError)
+    }
 
     return result
   } catch (error: any) {

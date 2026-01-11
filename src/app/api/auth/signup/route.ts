@@ -86,6 +86,15 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Send welcome email (non-blocking - don't fail signup if email fails)
+    try {
+      const { sendWelcomeEmail } = await import('@/lib/email')
+      await sendWelcomeEmail(user.email, user.name)
+    } catch (emailError) {
+      // Log error but don't fail signup
+      console.error('Failed to send welcome email:', emailError)
+    }
+
     // Note: Auto-login is handled client-side after successful signup
     // This is more reliable than server-side signIn in NextAuth v5
     // The client will call signIn after receiving success response

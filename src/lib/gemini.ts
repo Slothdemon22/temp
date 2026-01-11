@@ -10,10 +10,24 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 const GEMINI_MODEL = 'gemini-2.5-flash'
 
 export async function callGeminiAPI(prompt: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY
+  // CRITICAL: Always get API key from environment variable - never hardcode
+  // Trim to handle any accidental whitespace in .env file
+  const apiKey = process.env.GEMINI_API_KEY?.trim()
 
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY environment variable is not set')
+  if (!apiKey || apiKey.length === 0) {
+    throw new Error(
+      'GEMINI_API_KEY environment variable is not set or is empty. ' +
+      'Please add GEMINI_API_KEY to your .env file. ' +
+      'Get your API key from: https://ai.google.dev/'
+    )
+  }
+
+  // Validate API key format (basic check - Gemini keys typically start with AIza)
+  if (!apiKey.startsWith('AIza') && apiKey.length < 20) {
+    console.warn(
+      'GEMINI_API_KEY does not appear to be in the expected format. ' +
+      'Please verify your API key is correct.'
+    )
   }
 
   if (!prompt || !prompt.trim()) {

@@ -10,16 +10,8 @@ export const links: ILink[] = [
         href: "/books",
     },
     {
-        name: "Features",
-        href: "#features",
-    },
-    {
         name: "Community",
         href: "/community",
-    },
-    {
-        name: "Join",
-        href: "#pricing",
     }
 ];
 
