@@ -446,7 +446,7 @@ export default function BooksPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-5 md:gap-6">
             {books.map((book) => (
               <div
                 key={book.id}
@@ -459,46 +459,46 @@ export default function BooksPage() {
                       alt={book.title}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     {book.isAvailable && (
-                      <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-lg">
+                      <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-lg">
                         Available
                       </div>
                     )}
                   </Link>
                 ) : (
                   <Link href={`/book/${book.id}`} className="block aspect-[3/4] bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center group-hover:from-orange-100 group-hover:to-orange-200 transition-colors relative">
-                    <span className="text-5xl text-orange-300 group-hover:scale-110 transition-transform">📚</span>
+                    <span className="text-6xl text-orange-300 group-hover:scale-110 transition-transform">📚</span>
                     {book.isAvailable && (
-                      <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-lg">
+                      <div className="absolute top-3 left-3 bg-green-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-lg">
                         Available
                       </div>
                     )}
                   </Link>
                 )}
-                <div className="p-4 flex flex-col flex-grow">
-                  <Link href={`/book/${book.id}`} className="block mb-1">
-                    <h3 className="text-sm font-urbanist font-bold text-zinc-900 line-clamp-2 hover:text-orange-600 transition-colors leading-tight mb-1">
+                <div className="p-5 flex flex-col flex-grow">
+                  <Link href={`/book/${book.id}`} className="block mb-2">
+                    <h3 className="text-base font-urbanist font-bold text-zinc-900 line-clamp-2 hover:text-orange-600 transition-colors leading-tight min-h-[3rem]">
                       {book.title}
                     </h3>
                   </Link>
-                  <p className="text-xs text-zinc-500 mb-3 line-clamp-1">
+                  <p className="text-sm text-zinc-500 mb-3 line-clamp-1">
                     by {book.author}
                   </p>
                   <div className="flex items-center gap-2 mb-3 flex-wrap">
-                    <span className="text-xs px-2 py-1 bg-orange-50 text-orange-600 rounded-md font-medium whitespace-nowrap">
+                    <span className="text-xs px-3 py-1 bg-orange-50 text-orange-600 rounded-lg font-medium whitespace-nowrap">
                       {BOOK_CONDITIONS.find((c) => c.value === book.condition)
                         ?.label || book.condition}
                     </span>
                     <span className="text-xs text-zinc-400 line-clamp-1 flex items-center gap-1">
                       <span>📍</span>
-                      <span className="truncate max-w-[80px]">{book.location.split(',')[0]}</span>
+                      <span className="truncate max-w-[100px]">{book.location.split(',')[0]}</span>
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-orange-500 text-sm">❤️</span>
-                      <span className="text-xs font-semibold text-zinc-700">
+                      <span className="text-orange-500 text-base">❤️</span>
+                      <span className="text-sm font-semibold text-zinc-700">
                         {book._count.wishlistItems}
                       </span>
                       {book._count.wishlistItems > 0 && (
@@ -511,7 +511,7 @@ export default function BooksPage() {
                           e.preventDefault()
                           handleWishlistToggle(book.id)
                         }}
-                        className={`text-sm px-2.5 py-1 rounded-lg transition-all ${
+                        className={`text-base px-3 py-1.5 rounded-lg transition-all ${
                           wishlistStatus[book.id]
                             ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
                             : 'bg-gray-100 text-zinc-600 hover:bg-gray-200'
