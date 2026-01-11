@@ -321,10 +321,28 @@ function ExchangeVerificationContent() {
               }, 2000);
             }}
             onLeave={() => {
-              console.log("Left the verification room");
-              setIsJoined(false);
-              setRoomCode(null);
-              router.push("/exchanges");
+              try {
+                console.log("Left the verification room");
+                setIsJoined(false);
+                setRoomCode(null);
+                
+                // Add small delay to allow cleanup before navigation
+                setTimeout(() => {
+                  try {
+                    router.push("/exchanges");
+                  } catch (navError) {
+                    console.warn("Router navigation failed, using window.location:", navError);
+                    // Fallback to window.location if router fails
+                    window.location.href = "/exchanges";
+                  }
+                }, 100);
+              } catch (error) {
+                console.error("Error in onLeave handler:", error);
+                // Ensure navigation happens even if there's an error
+                setTimeout(() => {
+                  window.location.href = "/exchanges";
+                }, 100);
+              }
             }}
           />
         </ErrorBoundary>

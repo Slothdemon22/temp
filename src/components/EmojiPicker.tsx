@@ -10,6 +10,7 @@
 import { useState, useRef, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { Smile } from 'lucide-react'
+import type { Theme } from 'emoji-picker-react'
 
 // Dynamically import emoji picker to avoid SSR issues
 const EmojiPicker = dynamic(
@@ -64,7 +65,7 @@ export default function EmojiPickerButton({ onEmojiClick, className = '' }: Emoj
           <div className="bg-white rounded-lg shadow-lg border border-gray-200">
             <EmojiPicker
               onEmojiClick={handleEmojiClick}
-              theme="light"
+              theme={'light' as Theme}
               width={350}
               height={400}
             />

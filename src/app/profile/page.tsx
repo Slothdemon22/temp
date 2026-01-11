@@ -19,7 +19,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { getUserBooksAction, getUserDeletedBooksAction, toggleBookDeleteAction } from '@/app/actions/books'
 import { getUserWishlistAction } from '@/app/actions/wishlist'
 import { getUserExchangesAction } from '@/app/actions/exchanges'
-import { signOut } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import BackButton from '@/components/back-button'
 import { User, BookOpen, Heart, ArrowLeftRight, LogOut, Trash2, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
@@ -50,6 +50,7 @@ interface Exchange {
 export default function ProfilePage() {
   const router = useRouter()
   const { user, isAuthenticated, loading: authLoading } = useAuth()
+  const { data: session, update: updateSession } = useSession()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [books, setBooks] = useState<Book[]>([])
@@ -58,6 +59,9 @@ export default function ProfilePage() {
   const [exchanges, setExchanges] = useState<Exchange[]>([])
   const [activeTab, setActiveTab] = useState<'overview' | 'books' | 'deleted' | 'wishlist'>('overview')
   const [togglingDelete, setTogglingDelete] = useState<string | null>(null)
+  
+  // Get current points from session (will be updated when session refreshes)
+  const currentPoints = session?.user?.points ?? user?.points ?? 0
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -119,8 +123,25 @@ export default function ProfilePage() {
   useEffect(() => {
     if (isAuthenticated) {
       loadData()
+      // Refresh session to get latest points
+      updateSession().catch(() => {
+        // Silently fail - session will update on next page load
+      })
     }
-  }, [isAuthenticated, loadData])
+  }, [isAuthenticated, loadData, updateSession])
+  
+  // Refresh session periodically to keep points updated
+  useEffect(() => {
+    if (!isAuthenticated) return
+    
+    const interval = setInterval(() => {
+      updateSession().catch(() => {
+        // Silently fail
+      })
+    }, 30000) // Refresh every 30 seconds
+    
+    return () => clearInterval(interval)
+  }, [isAuthenticated, updateSession])
 
   const handleSignOut = async () => {
     await signOut({ redirect: true, callbackUrl: '/' })
@@ -182,7 +203,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white/50 backdrop-blur border border-gray-200 rounded-xl p-6 text-center">
             <div className="text-3xl font-urbanist font-bold text-orange-500 mb-2">
-              {user.points || 0}
+              {currentPoints}
             </div>
             <div className="text-sm text-zinc-500">Points</div>
           </div>
@@ -271,7 +292,7 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <p className="text-sm text-zinc-500">Points Balance</p>
-                  <p className="text-zinc-900 font-medium text-orange-500">{user.points || 0} points</p>
+                  <p className="text-zinc-900 font-medium text-orange-500">{currentPoints} points</p>
                 </div>
               </div>
             </div>

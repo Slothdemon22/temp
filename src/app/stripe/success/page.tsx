@@ -3,10 +3,14 @@
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 import { addPointsAfterPayment } from '@/app/actions/points'
+import { useSession } from 'next-auth/react'
 
 function StripeSuccessContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const { data: session, update: updateSession } = useSession()
   const sessionId = searchParams.get('session_id')
   const points = searchParams.get('points')
   const [loading, setLoading] = useState(true)
@@ -26,6 +30,16 @@ function StripeSuccessContent() {
           const result = await addPointsAfterPayment(sessionId)
           if (result.success) {
             setNewPoints(result.points)
+            
+            // Refresh the session to get updated points
+            try {
+              await updateSession()
+              // Force a router refresh to update all components
+              router.refresh()
+            } catch (sessionError) {
+              console.warn('Failed to refresh session (non-critical):', sessionError)
+              // Still show success - points are in database
+            }
           }
         } catch (err: any) {
           console.error('Error processing points:', err)
@@ -37,7 +51,7 @@ function StripeSuccessContent() {
     }
 
     processPayment()
-  }, [sessionId, points])
+  }, [sessionId, points, updateSession, router])
 
   if (loading) {
     return (

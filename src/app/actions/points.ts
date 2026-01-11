@@ -50,6 +50,9 @@ export async function addPointsAfterPayment(sessionId: string) {
       },
     })
 
+    // Note: Session will be updated on client-side via updateSession()
+    // The JWT callback in auth.ts will fetch fresh points when trigger === 'update'
+
     return {
       success: true,
       points: user.points,

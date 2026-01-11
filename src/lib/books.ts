@@ -399,6 +399,7 @@ export async function toggleBookDelete(bookId: string, isDeleted?: boolean) {
     select: {
       currentOwnerId: true,
       isDeleted: true,
+      isAvailable: true,
     },
   })
 

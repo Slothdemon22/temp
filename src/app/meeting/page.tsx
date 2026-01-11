@@ -48,21 +48,61 @@ function MeetingPageContent() {
     setIsMounted(true);
   }, []);
 
-  // Handle chunk loading errors globally
+  // Handle chunk loading errors and getComputedStyle errors globally
   useEffect(() => {
-    const handleChunkError = (event: ErrorEvent) => {
-      if (event.error?.message?.includes("ChunkLoadError") || event.error?.name === "ChunkLoadError") {
+    const handleError = (event: ErrorEvent) => {
+      const errorMessage = event.error?.message || event.message || "";
+      
+      // Handle chunk loading errors
+      if (errorMessage.includes("ChunkLoadError") || event.error?.name === "ChunkLoadError") {
         console.error("ChunkLoadError detected, reloading page...");
         setChunkError("Failed to load resources. Reloading page...");
         setTimeout(() => {
           window.location.reload();
         }, 2000);
+        return;
+      }
+      
+      // Handle getComputedStyle errors - redirect to home gracefully
+      if (errorMessage.includes("getComputedStyle") || errorMessage.includes("not of type 'Element'")) {
+        console.warn("DOM access error detected, redirecting to home:", errorMessage);
+        event.preventDefault(); // Prevent error from showing
+        setTimeout(() => {
+          try {
+            router.push("/");
+          } catch {
+            window.location.href = "/";
+          }
+        }, 100);
+        return;
       }
     };
 
-    window.addEventListener("error", handleChunkError);
-    return () => window.removeEventListener("error", handleChunkError);
-  }, []);
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const errorMessage = event.reason?.message || String(event.reason) || "";
+      
+      // Handle getComputedStyle errors in promise rejections
+      if (errorMessage.includes("getComputedStyle") || errorMessage.includes("not of type 'Element'")) {
+        console.warn("Unhandled promise rejection with DOM error, redirecting to home:", errorMessage);
+        event.preventDefault(); // Prevent error from showing
+        setTimeout(() => {
+          try {
+            router.push("/");
+          } catch {
+            window.location.href = "/";
+          }
+        }, 100);
+      }
+    };
+
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+    
+    return () => {
+      window.removeEventListener("error", handleError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
+  }, [router]);
 
   const joinRoom = useCallback(async (roomId?: string, shouldCreate: boolean = false) => {
     setIsLoading(true);
@@ -175,6 +215,19 @@ function MeetingPageContent() {
     }
   }, [searchParams, roomCode, isLoading, isMounted, joinRoom]);
 
+
+  // Cleanup on unmount to prevent DOM access errors
+  useEffect(() => {
+    return () => {
+      // Cleanup function to prevent getComputedStyle errors
+      try {
+        setIsJoined(false);
+        setRoomCode(null);
+      } catch (error) {
+        console.warn("Cleanup error (non-critical):", error);
+      }
+    };
+  }, []);
 
   // Auto-enable video and audio tracks after joining
   useEffect(() => {
@@ -395,10 +448,28 @@ function MeetingPageContent() {
             }, 2000);
           }}
           onLeave={() => {
-            console.log("Left the room");
-            setIsJoined(false);
-            setRoomCode(null);
-            router.push("/");
+            try {
+              console.log("Left the room");
+              setIsJoined(false);
+              setRoomCode(null);
+              
+              // Add small delay to allow cleanup before navigation
+              setTimeout(() => {
+                try {
+                  router.push("/");
+                } catch (navError) {
+                  console.warn("Router navigation failed, using window.location:", navError);
+                  // Fallback to window.location if router fails
+                  window.location.href = "/";
+                }
+              }, 100);
+            } catch (error) {
+              console.error("Error in onLeave handler:", error);
+              // Ensure navigation happens even if there's an error
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 100);
+            }
           }}
           />
         </ErrorBoundary>
